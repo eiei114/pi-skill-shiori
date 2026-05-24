@@ -32,6 +32,38 @@ Pi core packages are peer dependencies and should be supplied by the Pi runtime:
 
 ## Install
 
+### Global install from npm
+
+After the package is published to npm:
+
+```bash
+pi install npm:pi-skill-shiori@0.1.0
+```
+
+Without a version pin:
+
+```bash
+pi install npm:pi-skill-shiori
+```
+
+### Project-local install from npm
+
+Use `-l` to write the package to the current project’s `.pi/settings.json`:
+
+```bash
+pi install -l npm:pi-skill-shiori@0.1.0
+```
+
+Equivalent manual `.pi/settings.json` entry:
+
+```json
+{
+  "packages": [
+    "npm:pi-skill-shiori@0.1.0"
+  ]
+}
+```
+
 ### Global install from GitHub
 
 ```bash
@@ -44,27 +76,16 @@ Without a tag pin:
 pi install git:github.com/eiei114/pi-skill-shiori
 ```
 
-### Project-local install
-
-Use `-l` to write the package to the current project’s `.pi/settings.json`:
+### Project-local install from GitHub
 
 ```bash
 pi install -l git:github.com/eiei114/pi-skill-shiori@v0.1.0
 ```
 
-Equivalent manual `.pi/settings.json` entry:
-
-```json
-{
-  "packages": [
-    "git:github.com/eiei114/pi-skill-shiori@v0.1.0"
-  ]
-}
-```
-
 ### Try without installing
 
 ```bash
+pi -e npm:pi-skill-shiori
 pi -e git:github.com/eiei114/pi-skill-shiori
 ```
 
@@ -211,6 +232,41 @@ Recommended release checks:
 ```bash
 npm run typecheck
 npm test
+```
+
+
+## Publish to npm
+
+Release checklist for npm:
+
+```bash
+npm run typecheck
+npm test
+npm run release:npm:dry
+npm whoami
+npm run release:npm
+```
+
+For a first-time publish, login first:
+
+```bash
+npm login
+```
+
+After publishing, verify the Pi install path:
+
+```bash
+pi install npm:pi-skill-shiori@0.1.0
+pi list
+/shiori:doctor
+```
+
+For future versions:
+
+```bash
+npm version patch
+git push --follow-tags
+npm run release:npm
 ```
 
 ## Security notes

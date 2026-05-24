@@ -29,7 +29,10 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit",
-    "test": "npm run typecheck"
+    "test": "npm run typecheck",
+    "prepublishOnly": "npm test",
+    "release:npm:dry": "npm pack --dry-run",
+    "release:npm": "npm publish --access public"
   },
   "pi": {
     "extensions": [
