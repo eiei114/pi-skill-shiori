@@ -54,12 +54,28 @@ Use `-l` to write the package to the current project’s `.pi/settings.json`:
 pi install -l npm:pi-skill-shiori@0.1.0
 ```
 
-Equivalent manual `.pi/settings.json` entry:
+Without a version pin:
+
+```bash
+pi install -l npm:pi-skill-shiori
+```
+
+Equivalent pinned manual `.pi/settings.json` entry:
 
 ```json
 {
   "packages": [
     "npm:pi-skill-shiori@0.1.0"
+  ]
+}
+```
+
+Equivalent unpinned manual `.pi/settings.json` entry:
+
+```json
+{
+  "packages": [
+    "npm:pi-skill-shiori"
   ]
 }
 ```
@@ -80,6 +96,12 @@ pi install git:github.com/eiei114/pi-skill-shiori
 
 ```bash
 pi install -l git:github.com/eiei114/pi-skill-shiori@v0.1.0
+```
+
+Without a tag pin:
+
+```bash
+pi install -l git:github.com/eiei114/pi-skill-shiori
 ```
 
 ### Try without installing
@@ -257,6 +279,7 @@ After publishing, verify the Pi install path:
 
 ```bash
 pi install npm:pi-skill-shiori@0.1.0
+pi install npm:pi-skill-shiori
 pi list
 /shiori:doctor
 ```
