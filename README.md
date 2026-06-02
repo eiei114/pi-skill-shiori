@@ -15,7 +15,7 @@ It is built for vaults or projects with many Agent Skills where the default cata
 
 ## Status
 
-`0.1.0` is an early working release. It is useful for local Pi workflows, but the prompt-boundary suppression logic is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
+`0.2.0` is an early working release. It is useful for local Pi workflows, but the prompt-boundary suppression logic is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
 
 ## Requirements
 
@@ -37,7 +37,7 @@ Pi core packages are peer dependencies and should be supplied by the Pi runtime:
 After the package is published to npm:
 
 ```bash
-pi install npm:pi-skill-shiori@0.1.0
+pi install npm:pi-skill-shiori@0.2.0
 ```
 
 Without a version pin:
@@ -51,7 +51,7 @@ pi install npm:pi-skill-shiori
 Use `-l` to write the package to the current project’s `.pi/settings.json`:
 
 ```bash
-pi install -l npm:pi-skill-shiori@0.1.0
+pi install -l npm:pi-skill-shiori@0.2.0
 ```
 
 Without a version pin:
@@ -65,7 +65,7 @@ Equivalent pinned manual `.pi/settings.json` entry:
 ```json
 {
   "packages": [
-    "npm:pi-skill-shiori@0.1.0"
+    "npm:pi-skill-shiori@0.2.0"
   ]
 }
 ```
@@ -83,7 +83,7 @@ Equivalent unpinned manual `.pi/settings.json` entry:
 ### Global install from GitHub
 
 ```bash
-pi install git:github.com/eiei114/pi-skill-shiori@v0.1.0
+pi install git:github.com/eiei114/pi-skill-shiori@v0.2.0
 ```
 
 Without a tag pin:
@@ -95,7 +95,7 @@ pi install git:github.com/eiei114/pi-skill-shiori
 ### Project-local install from GitHub
 
 ```bash
-pi install -l git:github.com/eiei114/pi-skill-shiori@v0.1.0
+pi install -l git:github.com/eiei114/pi-skill-shiori@v0.2.0
 ```
 
 Without a tag pin:
@@ -278,7 +278,7 @@ npm login
 After publishing, verify the Pi install path:
 
 ```bash
-pi install npm:pi-skill-shiori@0.1.0
+pi install npm:pi-skill-shiori@0.2.0
 pi install npm:pi-skill-shiori
 pi list
 /shiori:doctor
