@@ -24,7 +24,9 @@ export async function buildSkillIndex(cwd: string, skills: SkillRecord[], policy
     await mkdir(cacheDir, { recursive: true });
 
     const db = new sqlite.DatabaseSync(dbPath);
-    db.exec("CREATE VIRTUAL TABLE skill_fts USING fts5(name, description, triggers, path)");
+    db.exec(
+      "CREATE VIRTUAL TABLE skill_fts USING fts5(name, description, triggers, path, tokenize='unicode61 remove_diacritics 2')",
+    );
     const insert = db.prepare("INSERT INTO skill_fts(name, description, triggers, path) VALUES (?, ?, ?, ?)");
     for (const skill of skills) {
       const triggers = [
@@ -69,12 +71,38 @@ export async function buildSkillIndex(cwd: string, skills: SkillRecord[], policy
   }
 }
 
-function buildFtsQuery(query: string): string {
-  const terms = query.match(/[A-Za-z0-9_-]{2,}/g) ?? [];
-  const uniqueTerms = [...new Set(terms.map((term) => term.toLowerCase()))].slice(0, 8);
-  return uniqueTerms.map((term) => `${escapeFtsTerm(term)}*`).join(" OR ");
+export function buildFtsQuery(query: string): string {
+  const terms = extractSearchTerms(query);
+  if (terms.length === 0) return "";
+  return terms.map((term) => `${escapeFtsTerm(term)}*`).join(" OR ");
+}
+
+function extractSearchTerms(query: string): string[] {
+  const terms = new Set<string>();
+  const chunks = query.split(/[^\p{L}\p{N}_-]+/u).filter(Boolean);
+
+  for (const chunk of chunks) {
+    if (chunk.length < 2) continue;
+
+    const isJapanese =
+      /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(chunk) &&
+      !/[A-Za-z]/u.test(chunk);
+
+    if (isJapanese) {
+      const segments = chunk.split(/(?:の|を|に|で|と|が|は|して|から|へ|も|など|まわり)/u);
+      for (const segment of segments) {
+        if (segment.length >= 2) terms.add(segment.toLocaleLowerCase());
+      }
+      if (terms.size === 0) terms.add(chunk.toLocaleLowerCase());
+      continue;
+    }
+
+    terms.add(chunk.toLocaleLowerCase());
+  }
+
+  return [...terms].slice(0, 8);
 }
 
 function escapeFtsTerm(term: string): string {
-  return term.replace(/[^A-Za-z0-9_-]/g, "");
+  return term.replace(/["'*():^]/g, "");
 }
