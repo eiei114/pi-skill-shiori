@@ -5,6 +5,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { discoverSkills, findDuplicates } from "./discovery.js";
 import { buildSkillIndex, type SkillIndex } from "./indexer.js";
 import { loadRecommendedSkills } from "./load-skills.js";
+import { formatPlanningKickoffMessage, isPlanningIntent } from "./planning-kickoff.js";
 import { createStats } from "./metrics.js";
 import { getPolicyPath, loadPolicy } from "./policy.js";
 import {
@@ -233,8 +234,13 @@ export default function piSkillShiori(pi: ExtensionAPI) {
 
       const policy = withRecommendLimits(current);
       const candidates = retrieveCandidatesExpanded(query, current.skills, policy, current);
-      const loaded = await loadRecommendedSkills(candidates);
-      const summary = formatLoadedSkillsSummary(loaded);
+      const planning = isPlanningIntent(query);
+      const loaded = planning ? [] : await loadRecommendedSkills(candidates);
+      const summary = planning
+        ? candidates.length > 0
+          ? `Matched ${candidates.length} skill(s): ${candidates.map((c) => c.skill.name).join(", ")}`
+          : ""
+        : formatLoadedSkillsSummary(loaded);
 
       if (summary) {
         ctx.ui.notify(summary, "info");
@@ -243,11 +249,16 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       }
 
       if (!pickOnly) {
-        pi.sendUserMessage(formatRecommendKickoffMessage(query, loaded));
+        const kickoff = isPlanningIntent(query)
+          ? formatPlanningKickoffMessage(query, candidates)
+          : formatRecommendKickoffMessage(query, loaded);
+        pi.sendUserMessage(kickoff);
         ctx.ui.notify(
-          loaded.length > 0
-            ? `Pre-loaded ${loaded.length} skill(s) and queued task for the agent.`
-            : "Queued task for the agent.",
+          isPlanningIntent(query)
+            ? "Queued dev-plan intake for the agent."
+            : loaded.length > 0
+              ? `Pre-loaded ${loaded.length} skill(s) and queued task for the agent.`
+              : "Queued task for the agent.",
           "info",
         );
         return;

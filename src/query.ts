@@ -20,7 +20,30 @@ const TERM_ALIASES: Record<string, string[]> = {
   調査: ["research", "investigate"],
   論文: ["paper", "research"],
   投稿: ["post", "tweet"],
+  計画: ["plan", "prd", "planning"],
+  プラン: ["plan", "prd"],
+  設計: ["design", "plan"],
+  タスク: ["task", "issues"],
+  分解: ["breakdown", "issues"],
 };
+
+/** Whole-prompt intents → English queries that match planning skills in descriptions. */
+const INTENT_QUERY_PACKS: Array<{ test: RegExp; queries: string[] }> = [
+  {
+    test: /計画|プラン|立てたい|planning/i,
+    queries: [
+      "to-prd PRD plan",
+      "to-issues breakdown plan",
+      "grill me plan design",
+      "request refactor plan",
+      "to-prd-for-oss plan",
+    ],
+  },
+  {
+    test: /開発計画|今日.*(やる|進める)|タスク分解|実装計画/i,
+    queries: ["to-prd plan", "to-issues breakdown", "refactor plan", "grill me plan"],
+  },
+];
 
 /** Build alternate queries for FTS + token scoring from one natural-language prompt. */
 export function buildRetrievalQueries(query: string): string[] {
@@ -30,6 +53,14 @@ export function buildRetrievalQueries(query: string): string[] {
   const queries = new Set<string>([trimmed]);
   const terms = extractSearchTerms(trimmed);
   const englishAliases: string[] = [];
+
+  for (const pack of INTENT_QUERY_PACKS) {
+    if (pack.test.test(trimmed)) {
+      for (const intentQuery of pack.queries) {
+        queries.add(intentQuery);
+      }
+    }
+  }
 
   for (const term of terms) {
     queries.add(term);
