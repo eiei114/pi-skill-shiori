@@ -6,7 +6,7 @@ import { discoverSkills, findDuplicates } from "./discovery.js";
 import { buildSkillIndex, type SkillIndex } from "./indexer.js";
 import { createStats } from "./metrics.js";
 import { getPolicyPath, loadPolicy } from "./policy.js";
-import { formatCandidateInjection, suppressSkillCatalog } from "./prompt.js";
+import { formatCandidateDetail, formatCandidateInjection, suppressSkillCatalog } from "./prompt.js";
 import { retrieveCandidates } from "./retrieval.js";
 import type { SkillRecord } from "./types.js";
 
@@ -148,16 +148,69 @@ export default function piSkillShiori(pi: ExtensionAPI) {
     },
   });
 
-  pi.registerCommand("shiori:test-query", {
-    description: "Test Pi Skill Shiori candidate retrieval for arbitrary text",
+  pi.registerCommand("shiori:recommend", {
+    description: "Recommend Agent Skills for a natural-language task",
     handler: async (args, ctx) => {
       const current = await ensureIndex(ctx.cwd);
-      const { query, verbose } = parseTestQueryArgs(args);
+      let query = args.trim();
+
+      if (!query) {
+        if (!ctx.hasUI) {
+          ctx.ui.notify(
+            "Provide a task description: /shiori:recommend <what you want to do>",
+            "warning",
+          );
+          return;
+        }
+        const input = await ctx.ui.input(
+          "What do you want help with?",
+          "Describe your task in natural language…",
+        );
+        if (!input?.trim()) {
+          ctx.ui.notify("Recommendation cancelled.", "info");
+          return;
+        }
+        query = input.trim();
+      }
+
       const candidates = retrieveCandidates(query, current.skills, current.policy, current);
-      ctx.ui.notify(
-        formatCandidateInjection(candidates, { verbose }) || "No candidates",
-        candidates.length ? "info" : "warning",
+      const summary = formatCandidateInjection(candidates);
+      if (!summary) {
+        ctx.ui.notify("No matching skills for that request.", "warning");
+        return;
+      }
+
+      ctx.ui.notify(summary, "info");
+
+      if (candidates.length === 0 || !ctx.hasUI) {
+        return;
+      }
+
+      const choice = await ctx.ui.select("Follow up on a recommendation:", [
+        ...candidates.map((candidate) => candidate.skill.name),
+        "Done",
+      ]);
+      if (!choice || choice === "Done") {
+        return;
+      }
+
+      const selected = candidates.find((candidate) => candidate.skill.name === choice);
+      if (!selected) {
+        return;
+      }
+
+      ctx.ui.notify(formatCandidateDetail(selected), "info");
+
+      const shouldLoad = await ctx.ui.confirm(
+        "Load this skill?",
+        `The agent can call shiori_load_skill({ skill: "${selected.skill.name}" }) to read the full SKILL.md.`,
       );
+      if (shouldLoad) {
+        ctx.ui.notify(
+          `Ask the agent to run: shiori_load_skill({ skill: "${selected.skill.name}" })`,
+          "info",
+        );
+      }
     },
   });
 
@@ -182,14 +235,6 @@ export default function piSkillShiori(pi: ExtensionAPI) {
 
 function findSkill(name: string, skills: SkillRecord[]): SkillRecord | undefined {
   return skills.find((skill) => skill.name === name);
-}
-
-function parseTestQueryArgs(args: string): { query: string; verbose: boolean } {
-  const verbose = /(^|\s)--verbose(\s|$)/.test(args);
-  return {
-    verbose,
-    query: args.replace(/(^|\s)--verbose(\s|$)/g, " ").trim(),
-  };
 }
 
 function formatBytes(bytes: number): string {

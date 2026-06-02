@@ -186,8 +186,8 @@ This writes a generated review file next to `.pi/skill-shiori.yml`. Review it be
 | `/shiori:bootstrap` | Generate a review draft policy from discovered skill descriptions. |
 | `/shiori:reload` | Rebuild Shiori’s skill inventory and retrieval index. |
 | `/shiori:reload --runtime` | Rebuild Shiori and ask Pi to reload runtime resources. Code changes may still need full restart. |
-| `/shiori:test-query <text>` | Preview candidates for a query. |
-| `/shiori:test-query --verbose <text>` | Include full descriptions, scores, paths, and load hints. |
+| `/shiori:recommend <text>` | Recommend skills for a natural-language task (compact list). |
+| `/shiori:recommend` | Ask what you need help with, then recommend skills (Pi UI input). |
 | `/shiori:stats` | Show operational counters. |
 
 ## Tool
