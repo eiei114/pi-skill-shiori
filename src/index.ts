@@ -6,8 +6,13 @@ import { discoverSkills, findDuplicates } from "./discovery.js";
 import { buildSkillIndex, type SkillIndex } from "./indexer.js";
 import { createStats } from "./metrics.js";
 import { getPolicyPath, loadPolicy } from "./policy.js";
-import { formatCandidateDetail, formatCandidateInjection, suppressSkillCatalog } from "./prompt.js";
-import { retrieveCandidates } from "./retrieval.js";
+import {
+  formatCandidateDetail,
+  formatCandidateInjection,
+  formatRecommendKickoffMessage,
+  suppressSkillCatalog,
+} from "./prompt.js";
+import { retrieveCandidatesExpanded } from "./retrieval-expanded.js";
 import type { SkillRecord } from "./types.js";
 
 interface ShioriLoadDetails {
@@ -60,7 +65,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       ctx.ui.notify("Pi Skill Shiori: Skill Catalog suppression pattern not found; leaving system prompt unchanged.", "warning");
     }
 
-    const candidates = retrieveCandidates(event.prompt, current.skills, current.policy, current);
+    const candidates = retrieveCandidatesExpanded(event.prompt, current.skills, current.policy, current);
     if (candidates.length === 0) stats.zeroCandidateCount += 1;
     else stats.candidateHitCount += 1;
 
@@ -70,6 +75,42 @@ export default function piSkillShiori(pi: ExtensionAPI) {
     return {
       systemPrompt: `${suppression.systemPrompt}${candidateSection}`,
     };
+  });
+
+  pi.registerTool({
+    name: "shiori_recommend",
+    label: "Shiori Recommend",
+    description: "Find Agent Skills that match a natural-language task description.",
+    promptSnippet: "Search the skill inventory for skills matching a task description",
+    promptGuidelines: [
+      "Use shiori_recommend when you need to discover which Agent Skill fits a task before loading it.",
+      "After shiori_recommend returns matches, call shiori_load_skill for the best candidate.",
+    ],
+    parameters: Type.Object({
+      task: Type.String({ description: "Natural-language description of what you want to do" }),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const current = await ensureIndex(ctx.cwd);
+      const candidates = retrieveCandidatesExpanded(params.task, current.skills, current.policy, current);
+      const summary = formatCandidateInjection(candidates);
+      return {
+        content: [
+          {
+            type: "text",
+            text: summary || "No matching skills for that task.",
+          },
+        ],
+        details: { query: params.task, matches: candidates.map((c) => c.skill.name) },
+      };
+    },
+    renderResult(result, { expanded }, theme) {
+      const details = result.details as { query?: string; matches?: string[] } | undefined;
+      const names = details?.matches?.join(", ") ?? "none";
+      const collapsed = `${theme.fg("success", "✓ Shiori")} ${theme.bold(names)}`;
+      if (!expanded) return new Text(collapsed, 0, 0);
+      const query = details?.query ? `\n${theme.fg("dim", details.query)}` : "";
+      return new Text(`${collapsed}${query}`, 0, 0);
+    },
   });
 
   pi.registerTool({
@@ -149,10 +190,11 @@ export default function piSkillShiori(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("shiori:recommend", {
-    description: "Recommend Agent Skills for a natural-language task",
+    description: "Recommend Agent Skills for a natural-language task and queue it for the agent",
     handler: async (args, ctx) => {
       const current = await ensureIndex(ctx.cwd);
-      let query = args.trim();
+      const pickOnly = args.trimStart().startsWith("--pick");
+      let query = (pickOnly ? args.replace(/^--pick\s*/, "") : args).trim();
 
       if (!query) {
         if (!ctx.hasUI) {
@@ -173,14 +215,20 @@ export default function piSkillShiori(pi: ExtensionAPI) {
         query = input.trim();
       }
 
-      const candidates = retrieveCandidates(query, current.skills, current.policy, current);
+      const candidates = retrieveCandidatesExpanded(query, current.skills, current.policy, current);
       const summary = formatCandidateInjection(candidates);
-      if (!summary) {
+
+      if (summary) {
+        ctx.ui.notify(summary, "info");
+      } else {
         ctx.ui.notify("No matching skills for that request.", "warning");
-        return;
       }
 
-      ctx.ui.notify(summary, "info");
+      if (!pickOnly) {
+        pi.sendUserMessage(formatRecommendKickoffMessage(query, candidates));
+        ctx.ui.notify("Queued task for the agent with Shiori recommendations.", "info");
+        return;
+      }
 
       if (candidates.length === 0 || !ctx.hasUI) {
         return;

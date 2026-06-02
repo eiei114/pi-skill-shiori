@@ -77,7 +77,7 @@ export function buildFtsQuery(query: string): string {
   return terms.map((term) => `${escapeFtsTerm(term)}*`).join(" OR ");
 }
 
-function extractSearchTerms(query: string): string[] {
+export function extractSearchTerms(query: string): string[] {
   const terms = new Set<string>();
   const chunks = query.split(/[^\p{L}\p{N}_-]+/u).filter(Boolean);
 

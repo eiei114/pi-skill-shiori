@@ -19,6 +19,29 @@ export function formatCandidateInjection(candidates: SkillCandidate[]): string {
   return lines.join("\n");
 }
 
+export function formatRecommendKickoffMessage(query: string, candidates: SkillCandidate[]): string {
+  const lines = [query.trim(), ""];
+  const skillBlock = formatCandidateInjection(candidates);
+
+  if (skillBlock) {
+    lines.push(
+      "---",
+      "Pi Skill Shiori recommendations:",
+      skillBlock,
+      "",
+      "Load the best matching skill with shiori_load_skill, then continue with the task above.",
+    );
+  } else {
+    lines.push(
+      "---",
+      "Pi Skill Shiori: no matching skills for this task.",
+      "Continue without a dedicated skill, or refine the task description and run /shiori:recommend again.",
+    );
+  }
+
+  return lines.join("\n");
+}
+
 export function formatCandidateDetail(candidate: SkillCandidate): string {
   return [
     candidate.skill.name,
