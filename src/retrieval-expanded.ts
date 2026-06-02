@@ -22,7 +22,6 @@ export function retrieveCandidatesExpanded(
         byName.set(candidate.skill.name, candidate);
       }
     }
-    if (byName.size >= max) break;
   }
 
   return [...byName.values()]

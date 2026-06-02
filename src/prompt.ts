@@ -19,26 +19,50 @@ export function formatCandidateInjection(candidates: SkillCandidate[]): string {
   return lines.join("\n");
 }
 
-export function formatRecommendKickoffMessage(query: string, candidates: SkillCandidate[]): string {
+export function formatRecommendKickoffMessage(
+  query: string,
+  loaded: Array<{ candidate: SkillCandidate; content: string }>,
+): string {
   const lines = [query.trim(), ""];
-  const skillBlock = formatCandidateInjection(candidates);
 
-  if (skillBlock) {
-    lines.push(
-      "---",
-      "Pi Skill Shiori recommendations:",
-      skillBlock,
-      "",
-      "Load the best matching skill with shiori_load_skill, then continue with the task above.",
-    );
-  } else {
+  if (loaded.length === 0) {
     lines.push(
       "---",
       "Pi Skill Shiori: no matching skills for this task.",
       "Continue without a dedicated skill, or refine the task description and run /shiori:recommend again.",
     );
+    return lines.join("\n");
   }
 
+  const names = loaded.map(({ candidate }) => candidate.skill.name).join(", ");
+  lines.push(
+    "---",
+    `Pi Skill Shiori: pre-loaded ${loaded.length} skill(s): ${names}`,
+    "Follow the skill instructions below and continue with the task above.",
+    "",
+  );
+
+  for (const { candidate, content } of loaded) {
+    lines.push(
+      `### Skill: ${candidate.skill.name}`,
+      `Score: ${candidate.score.toFixed(2)} | Why: ${candidate.why}`,
+      `Path: ${candidate.skill.path}`,
+      "",
+      content.trim(),
+      "",
+    );
+  }
+
+  return lines.join("\n");
+}
+
+export function formatLoadedSkillsSummary(loaded: Array<{ candidate: SkillCandidate; content: string }>): string {
+  if (loaded.length === 0) return "";
+  const lines = [`Pre-loaded ${loaded.length} skill(s):`];
+  for (const { candidate } of loaded) {
+    const desc = compactDescription(candidate.skill.description, COMPACT_DESCRIPTION_LIMIT);
+    lines.push(`- ${candidate.skill.name} (${candidate.score.toFixed(2)}): ${desc}`);
+  }
   return lines.join("\n");
 }
 

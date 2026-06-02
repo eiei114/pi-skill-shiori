@@ -4,11 +4,13 @@ import { Type } from "typebox";
 import { readFile, writeFile } from "node:fs/promises";
 import { discoverSkills, findDuplicates } from "./discovery.js";
 import { buildSkillIndex, type SkillIndex } from "./indexer.js";
+import { loadRecommendedSkills } from "./load-skills.js";
 import { createStats } from "./metrics.js";
 import { getPolicyPath, loadPolicy } from "./policy.js";
 import {
   formatCandidateDetail,
   formatCandidateInjection,
+  formatLoadedSkillsSummary,
   formatRecommendKickoffMessage,
   suppressSkillCatalog,
 } from "./prompt.js";
@@ -23,6 +25,7 @@ interface ShioriLoadDetails {
 }
 
 const SHIORI_CODE_MARKER = "prompt-boundary-v3";
+const RECOMMEND_MAX_CANDIDATES = 5;
 
 export default function piSkillShiori(pi: ExtensionAPI) {
   let index: SkillIndex | undefined;
@@ -42,6 +45,16 @@ export default function piSkillShiori(pi: ExtensionAPI) {
 
   async function ensureIndex(cwd: string): Promise<SkillIndex> {
     return index ?? reload(cwd);
+  }
+
+  function withRecommendLimits(current: SkillIndex) {
+    return {
+      ...current.policy,
+      candidateInjection: {
+        ...current.policy.candidateInjection,
+        maxCandidates: Math.max(current.policy.candidateInjection.maxCandidates, RECOMMEND_MAX_CANDIDATES),
+      },
+    };
   }
 
   pi.on("session_start", async (_event, ctx) => {
@@ -83,23 +96,26 @@ export default function piSkillShiori(pi: ExtensionAPI) {
     description: "Find Agent Skills that match a natural-language task description.",
     promptSnippet: "Search the skill inventory for skills matching a task description",
     promptGuidelines: [
-      "Use shiori_recommend when you need to discover which Agent Skill fits a task before loading it.",
-      "After shiori_recommend returns matches, call shiori_load_skill for the best candidate.",
+      "Use shiori_recommend when you need to discover which Agent Skills fit a task before loading them.",
+      "shiori_recommend may return multiple pre-loaded skills; follow all relevant ones.",
     ],
     parameters: Type.Object({
       task: Type.String({ description: "Natural-language description of what you want to do" }),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const current = await ensureIndex(ctx.cwd);
-      const candidates = retrieveCandidatesExpanded(params.task, current.skills, current.policy, current);
-      const summary = formatCandidateInjection(candidates);
+      const policy = withRecommendLimits(current);
+      const candidates = retrieveCandidatesExpanded(params.task, current.skills, policy, current);
+      const loaded = await loadRecommendedSkills(candidates);
+      const summary = formatLoadedSkillsSummary(loaded);
+      const blocks = loaded.map(({ candidate, content }) => ({
+        type: "text" as const,
+        text: `## ${candidate.skill.name}\n\n${content}`,
+      }));
       return {
-        content: [
-          {
-            type: "text",
-            text: summary || "No matching skills for that task.",
-          },
-        ],
+        content: summary
+          ? [{ type: "text", text: summary }, ...blocks]
+          : [{ type: "text", text: "No matching skills for that task." }],
         details: { query: params.task, matches: candidates.map((c) => c.skill.name) },
       };
     },
@@ -215,8 +231,10 @@ export default function piSkillShiori(pi: ExtensionAPI) {
         query = input.trim();
       }
 
-      const candidates = retrieveCandidatesExpanded(query, current.skills, current.policy, current);
-      const summary = formatCandidateInjection(candidates);
+      const policy = withRecommendLimits(current);
+      const candidates = retrieveCandidatesExpanded(query, current.skills, policy, current);
+      const loaded = await loadRecommendedSkills(candidates);
+      const summary = formatLoadedSkillsSummary(loaded);
 
       if (summary) {
         ctx.ui.notify(summary, "info");
@@ -225,8 +243,13 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       }
 
       if (!pickOnly) {
-        pi.sendUserMessage(formatRecommendKickoffMessage(query, candidates));
-        ctx.ui.notify("Queued task for the agent with Shiori recommendations.", "info");
+        pi.sendUserMessage(formatRecommendKickoffMessage(query, loaded));
+        ctx.ui.notify(
+          loaded.length > 0
+            ? `Pre-loaded ${loaded.length} skill(s) and queued task for the agent.`
+            : "Queued task for the agent.",
+          "info",
+        );
         return;
       }
 
@@ -298,7 +321,7 @@ function renderGeneratedPolicy(skills: SkillRecord[]): string {
     "defaults:",
     "  activation: explicit",
     "candidateInjection:",
-    "  maxCandidates: 3",
+    "  maxCandidates: 5",
     "  minScore: 0.62",
     "alwaysVisible:",
     "  - pi-skill-shiori",
