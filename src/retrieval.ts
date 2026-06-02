@@ -22,7 +22,7 @@ export function retrieveCandidates(
   }
 
   const ftsMatches = index?.search(query, policy.candidateInjection.maxCandidates * 4) ?? [];
-  const scoringPool = ftsMatches.length > 0 ? ftsMatches : triggerableSkills;
+  const scoringPool = ftsMatches.length > 0 ? ftsMatches : skills;
   for (const skill of scoringPool) {
     const candidate = evaluateSkill(skill, normalizedQuery, policy, false);
     if (!candidate) continue;

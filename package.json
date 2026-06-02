@@ -1,6 +1,6 @@
 {
   "name": "pi-skill-shiori",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Pi extension that reduces Agent Skill catalog tokens with policy-based skill retrieval and on-demand skill loading.",
   "type": "module",
   "license": "MIT",
@@ -29,7 +29,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit",
-    "test": "npm run typecheck",
+    "test": "npm run typecheck && tsx --test tests/*.test.mjs",
     "prepublishOnly": "npm test",
     "release:npm:dry": "npm pack --dry-run",
     "release:npm": "npm publish --access public"
@@ -53,6 +53,7 @@
     "@earendil-works/pi-coding-agent": "^0.75.5",
     "@earendil-works/pi-tui": "^0.75.5",
     "@types/node": "^25.9.1",
+    "tsx": "^4.22.4",
     "typebox": "^1.1.38",
     "typescript": "^6.0.3"
   }

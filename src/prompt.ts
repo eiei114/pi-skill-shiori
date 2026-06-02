@@ -1,9 +1,5 @@
 import type { SkillCandidate, SuppressionStatus } from "./types.js";
 
-interface CandidateFormatOptions {
-  verbose?: boolean;
-}
-
 export interface CatalogSuppressionResult {
   systemPrompt: string;
   status: SuppressionStatus;
@@ -11,25 +7,74 @@ export interface CatalogSuppressionResult {
 
 const COMPACT_DESCRIPTION_LIMIT = 120;
 
-export function formatCandidateInjection(candidates: SkillCandidate[], options: CandidateFormatOptions = {}): string {
+export function formatCandidateInjection(candidates: SkillCandidate[]): string {
   if (candidates.length === 0) return "";
   const lines = ["Relevant skills:"];
   for (const candidate of candidates) {
     const desc = compactDescription(candidate.skill.description, COMPACT_DESCRIPTION_LIMIT);
-    if (options.verbose) {
-      lines.push(`- ${candidate.skill.name}`);
-      lines.push(`  desc: ${candidate.skill.description}`);
-      lines.push(`  score: ${candidate.score.toFixed(2)}`);
-      lines.push(`  why: ${candidate.why}`);
-      lines.push(`  path: ${candidate.skill.path}`);
-      lines.push(`  load: shiori_load_skill({ skill: "${candidate.skill.name}" })`);
-    } else {
-      lines.push(
-        `- ${candidate.skill.name}: ${desc} Reason: ${candidate.why}. Load: shiori_load_skill({ skill: "${candidate.skill.name}" })`,
-      );
-    }
+    lines.push(
+      `- ${candidate.skill.name}: ${desc} Reason: ${candidate.why}. Load: shiori_load_skill({ skill: "${candidate.skill.name}" })`,
+    );
   }
   return lines.join("\n");
+}
+
+export function formatRecommendKickoffMessage(
+  query: string,
+  loaded: Array<{ candidate: SkillCandidate; content: string }>,
+): string {
+  const lines = [query.trim(), ""];
+
+  if (loaded.length === 0) {
+    lines.push(
+      "---",
+      "Pi Skill Shiori: no matching skills for this task.",
+      "Continue without a dedicated skill, or refine the task description and run /shiori:recommend again.",
+    );
+    return lines.join("\n");
+  }
+
+  const names = loaded.map(({ candidate }) => candidate.skill.name).join(", ");
+  lines.push(
+    "---",
+    `Pi Skill Shiori: pre-loaded ${loaded.length} skill(s): ${names}`,
+    "Follow the skill instructions below and continue with the task above.",
+    "",
+  );
+
+  for (const { candidate, content } of loaded) {
+    lines.push(
+      `### Skill: ${candidate.skill.name}`,
+      `Score: ${candidate.score.toFixed(2)} | Why: ${candidate.why}`,
+      `Path: ${candidate.skill.path}`,
+      "",
+      content.trim(),
+      "",
+    );
+  }
+
+  return lines.join("\n");
+}
+
+export function formatLoadedSkillsSummary(loaded: Array<{ candidate: SkillCandidate; content: string }>): string {
+  if (loaded.length === 0) return "";
+  const lines = [`Pre-loaded ${loaded.length} skill(s):`];
+  for (const { candidate } of loaded) {
+    const desc = compactDescription(candidate.skill.description, COMPACT_DESCRIPTION_LIMIT);
+    lines.push(`- ${candidate.skill.name} (${candidate.score.toFixed(2)}): ${desc}`);
+  }
+  return lines.join("\n");
+}
+
+export function formatCandidateDetail(candidate: SkillCandidate): string {
+  return [
+    candidate.skill.name,
+    `Description: ${candidate.skill.description}`,
+    `Score: ${candidate.score.toFixed(2)}`,
+    `Why: ${candidate.why}`,
+    `Path: ${candidate.skill.path}`,
+    `Load: shiori_load_skill({ skill: "${candidate.skill.name}" })`,
+  ].join("\n");
 }
 
 export function compactDescription(description: string, maxChars = COMPACT_DESCRIPTION_LIMIT): string {
