@@ -36,7 +36,8 @@
     "test": "npm run typecheck && tsx --test tests/*.test.mjs",
     "prepublishOnly": "npm test",
     "release:npm:dry": "npm pack --dry-run",
-    "release:npm": "npm publish --access public"
+    "release:npm": "npm publish --access public",
+    "version:check": "node scripts/check-version-bump.mjs"
   },
   "pi": {
     "extensions": [
