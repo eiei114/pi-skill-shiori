@@ -27,6 +27,11 @@ interface ShioriLoadDetails {
 
 const SHIORI_CODE_MARKER = "prompt-boundary-v3";
 const RECOMMEND_MAX_CANDIDATES = 5;
+const RELOAD_INVENTORY_ONLY = "Shiori inventory only";
+const RELOAD_WITH_RUNTIME = "Shiori inventory + Pi runtime resources";
+const RECOMMEND_QUEUE_TASK = "Pre-load matches and queue task for agent";
+const RECOMMEND_REVIEW_ONLY = "Review recommendations only";
+const CANCEL_CHOICE = "Cancel";
 
 export default function piSkillShiori(pi: ExtensionAPI) {
   let index: SkillIndex | undefined;
@@ -60,6 +65,11 @@ export default function piSkillShiori(pi: ExtensionAPI) {
 
   pi.on("session_start", async (_event, ctx) => {
     await reload(ctx.cwd);
+  });
+
+  pi.on("session_shutdown", () => {
+    index?.close?.();
+    index = undefined;
   });
 
   pi.on("input", async (event) => {
@@ -196,9 +206,23 @@ export default function piSkillShiori(pi: ExtensionAPI) {
 
   pi.registerCommand("shiori:reload", {
     description: "Rebuild Pi Skill Shiori inventory and optional Pi runtime resources",
-    handler: async (args, ctx) => {
+    handler: async (_args, ctx) => {
+      let target = RELOAD_INVENTORY_ONLY;
+      if (ctx.hasUI) {
+        const choice = await ctx.ui.select("Reload what?", [
+          RELOAD_INVENTORY_ONLY,
+          RELOAD_WITH_RUNTIME,
+          CANCEL_CHOICE,
+        ]);
+        if (!choice || choice === CANCEL_CHOICE) {
+          ctx.ui.notify("Reload cancelled.", "info");
+          return;
+        }
+        target = choice;
+      }
+
       await reload(ctx.cwd);
-      if (args.includes("--runtime")) {
+      if (target === RELOAD_WITH_RUNTIME) {
         await ctx.reload();
         return;
       }
@@ -208,35 +232,39 @@ export default function piSkillShiori(pi: ExtensionAPI) {
 
   pi.registerCommand("shiori:recommend", {
     description: "Recommend Agent Skills for a natural-language task and queue it for the agent",
-    handler: async (args, ctx) => {
+    handler: async (_args, ctx) => {
       const current = await ensureIndex(ctx.cwd);
-      const pickOnly = args.trimStart().startsWith("--pick");
-      let query = (pickOnly ? args.replace(/^--pick\s*/, "") : args).trim();
+      if (!ctx.hasUI) {
+        ctx.ui.notify("Run /shiori:recommend in the Pi UI to enter a task description.", "warning");
+        return;
+      }
 
+      const input = await ctx.ui.input(
+        "What do you want help with?",
+        "Describe your task in natural language…",
+      );
+      const query = input?.trim();
       if (!query) {
-        if (!ctx.hasUI) {
-          ctx.ui.notify(
-            "Provide a task description: /shiori:recommend <what you want to do>",
-            "warning",
-          );
-          return;
-        }
-        const input = await ctx.ui.input(
-          "What do you want help with?",
-          "Describe your task in natural language…",
-        );
-        if (!input?.trim()) {
-          ctx.ui.notify("Recommendation cancelled.", "info");
-          return;
-        }
-        query = input.trim();
+        ctx.ui.notify("Recommendation cancelled.", "info");
+        return;
+      }
+
+      const action = await ctx.ui.select("How should Shiori use these recommendations?", [
+        RECOMMEND_QUEUE_TASK,
+        RECOMMEND_REVIEW_ONLY,
+        CANCEL_CHOICE,
+      ]);
+      if (!action || action === CANCEL_CHOICE) {
+        ctx.ui.notify("Recommendation cancelled.", "info");
+        return;
       }
 
       const policy = withRecommendLimits(current);
       const candidates = retrieveCandidatesExpanded(query, current.skills, policy, current);
       const planning = isPlanningIntent(query);
-      const loaded = planning ? [] : await loadRecommendedSkills(candidates);
-      const summary = planning
+      const reviewOnly = action === RECOMMEND_REVIEW_ONLY;
+      const loaded = planning || reviewOnly ? [] : await loadRecommendedSkills(candidates);
+      const summary = planning || reviewOnly
         ? candidates.length > 0
           ? `Matched ${candidates.length} skill(s): ${candidates.map((c) => c.skill.name).join(", ")}`
           : ""
@@ -248,7 +276,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
         ctx.ui.notify("No matching skills for that request.", "warning");
       }
 
-      if (!pickOnly) {
+      if (!reviewOnly) {
         const kickoff = isPlanningIntent(query)
           ? formatPlanningKickoffMessage(query, candidates)
           : formatRecommendKickoffMessage(query, loaded);
@@ -264,7 +292,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
         return;
       }
 
-      if (candidates.length === 0 || !ctx.hasUI) {
+      if (candidates.length === 0) {
         return;
       }
 
