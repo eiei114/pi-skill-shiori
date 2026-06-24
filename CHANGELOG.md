@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## [0.3.2] - 2026-06-24
+
+### Added
+
+- `ROADMAP.md` with maintenance-first phased goals (Month 1–3), template compliance checklist, and maintenance schedule.
+- README links to `ROADMAP.md`.
+- npm package `files` now includes `ROADMAP.md`.
+
 ## [0.3.1] - 2026-06-19
 
 ### Added
