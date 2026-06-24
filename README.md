@@ -4,6 +4,8 @@ Pi Skill Shiori is a [Pi](https://pi.dev/) package that keeps large Agent Skill 
 
 It is built for vaults or projects with many Agent Skills where the default catalog becomes noisy and expensive.
 
+For maintenance priorities and the phased plan, see [`ROADMAP.md`](ROADMAP.md).
+
 ## What it does
 
 - **Zero-Catalog Mode**: hides the normal skill catalog when Pi exposes one in the system prompt.
