@@ -30,6 +30,10 @@ export async function loadPolicy(cwd: string): Promise<ShioriPolicy> {
 }
 
 function normalizePolicy(policy: Partial<ShioriPolicy> | undefined): ShioriPolicy {
+  const extraRoots = (policy?.inventory?.roots ?? [])
+    .map((root) => (typeof root === "string" ? root.trim() : ""))
+    .filter(Boolean);
+
   return {
     zeroCatalog: {
       enabled: policy?.zeroCatalog?.enabled ?? DEFAULT_POLICY.zeroCatalog.enabled,
@@ -42,6 +46,13 @@ function normalizePolicy(policy: Partial<ShioriPolicy> | undefined): ShioriPolic
       minScore: policy?.candidateInjection?.minScore ?? DEFAULT_POLICY.candidateInjection.minScore,
     },
     alwaysVisible: normalizeAlwaysVisible(policy?.alwaysVisible ?? DEFAULT_POLICY.alwaysVisible).allowlist,
+    inventory:
+      extraRoots.length > 0 || policy?.inventory?.autoRefreshOnChange === false
+        ? {
+            roots: extraRoots.length > 0 ? extraRoots : undefined,
+            autoRefreshOnChange: policy?.inventory?.autoRefreshOnChange,
+          }
+        : undefined,
     skills: policy?.skills ?? DEFAULT_POLICY.skills,
   };
 }

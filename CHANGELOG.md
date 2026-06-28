@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## [0.5.0] - 2026-06-28
+
+### Added
+
+- Vault-wide skill inventory: Shiori indexes skills from project `.pi/skills`, `.agents/skills`, the user-global `~/.pi/agent/skills` root, and optional policy `inventory.roots`.
+- Automatic inventory refresh when skill files change under any indexed root (enabled by default; disable with `inventory.autoRefreshOnChange: false`).
+- `/shiori:doctor` now lists indexed roots with per-root skill counts and auto-refresh status.
+- `/shiori:stats` counters for manual and automatic inventory refreshes.
+- Tests for multi-root discovery, refresh after local changes, and policy-aware retrieval.
+
+### Changed
+
+- `/shiori:reload` rebuilds the vault-wide inventory and SQLite FTS index instead of relying on the session-start snapshot only.
+
 ## [0.4.0] - 2026-06-28
 
 ### Added

@@ -3,8 +3,8 @@ import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { readFile, writeFile } from "node:fs/promises";
 import { evaluateAlwaysVisible, formatAlwaysVisibleDiagnostics } from "./always-visible.js";
-import { discoverSkills, findDuplicates } from "./discovery.js";
-import { buildSkillIndex, type SkillIndex } from "./indexer.js";
+import { findDuplicates, formatInventoryRoots, isAutoRefreshEnabled, isInventoryStale, refreshSkillInventory } from "./inventory.js";
+import type { SkillIndex } from "./indexer.js";
 import { loadRecommendedSkills } from "./load-skills.js";
 import { formatPlanningKickoffMessage, isPlanningIntent } from "./planning-kickoff.js";
 import { createStats } from "./metrics.js";
@@ -36,23 +36,42 @@ const CANCEL_CHOICE = "Cancel";
 
 export default function piSkillShiori(pi: ExtensionAPI) {
   let index: SkillIndex | undefined;
+  let inventoryFingerprint: string | undefined;
+  let inventoryRoots: string[] = [];
   let warnedAlwaysVisibleMissing = new Set<string>();
   const stats = createStats();
 
   async function reload(cwd: string): Promise<SkillIndex> {
-    const [policy, skills] = await Promise.all([loadPolicy(cwd), discoverSkills(cwd)]);
-    index?.close?.();
-    index = await buildSkillIndex(cwd, skills, policy);
-    stats.inventoryCount = skills.length;
-    stats.duplicateCount = findDuplicates(skills).size;
+    const policy = await loadPolicy(cwd);
+    const inventory = await refreshSkillInventory(cwd, policy, index);
+    index = inventory.index;
+    inventoryFingerprint = inventory.fingerprint;
+    inventoryRoots = inventory.roots;
+    stats.inventoryCount = index.skills.length;
+    stats.duplicateCount = findDuplicates(index.skills).size;
     stats.lastReloadAt = index.builtAt;
     stats.retrievalBackend = index.retrievalBackend;
     stats.suppressionStatus = policy.zeroCatalog.enabled ? "not-needed" : "disabled";
+    stats.inventoryRefreshCount += 1;
     return index;
   }
 
   async function ensureIndex(cwd: string): Promise<SkillIndex> {
-    return index ?? reload(cwd);
+    if (!index || !inventoryFingerprint) {
+      return reload(cwd);
+    }
+
+    const policy = await loadPolicy(cwd);
+    if (!isAutoRefreshEnabled(policy)) {
+      return index;
+    }
+
+    if (await isInventoryStale(cwd, policy, inventoryFingerprint)) {
+      stats.inventoryAutoRefreshCount += 1;
+      return reload(cwd);
+    }
+
+    return index;
   }
 
   function withRecommendLimits(current: SkillIndex) {
@@ -72,6 +91,8 @@ export default function piSkillShiori(pi: ExtensionAPI) {
   pi.on("session_shutdown", () => {
     index?.close?.();
     index = undefined;
+    inventoryFingerprint = undefined;
+    inventoryRoots = [];
   });
 
   pi.on("input", async (event) => {
@@ -210,6 +231,9 @@ export default function piSkillShiori(pi: ExtensionAPI) {
         `duplicates: ${duplicates.size}`,
         `alwaysVisible: ${current.policy.alwaysVisible.join(", ") || "none"}`,
         ...formatAlwaysVisibleDiagnostics(alwaysVisible),
+        "inventoryRoots:",
+        ...formatInventoryRoots(inventoryRoots, current.skills).map((line) => `  - ${line}`),
+        `autoRefreshOnChange: ${isAutoRefreshEnabled(current.policy) ? "enabled" : "disabled"}`,
         `retrievalBackend: ${current.retrievalBackend}`,
         `suppression: ${stats.suppressionStatus}`,
         `code: ${SHIORI_CODE_MARKER}`,

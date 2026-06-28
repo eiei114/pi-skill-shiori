@@ -10,5 +10,7 @@ export function createStats(): ShioriStats {
     explicitInvocationCount: 0,
     retrievalBackend: "token-match",
     suppressionStatus: "disabled",
+    inventoryRefreshCount: 0,
+    inventoryAutoRefreshCount: 0,
   };
 }

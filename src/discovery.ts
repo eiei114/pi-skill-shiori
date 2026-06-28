@@ -1,18 +1,42 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
-import type { SkillRecord } from "./types.js";
+import type { ShioriPolicy, SkillRecord } from "./types.js";
 
 const SKILL_FILE = "SKILL.md";
 
-export async function discoverSkills(cwd: string): Promise<SkillRecord[]> {
+/** Project-local skill roots scanned on every vault-wide inventory build. */
+export const VAULT_LOCAL_SKILL_ROOT_SEGMENTS = [".pi/skills", ".agents/skills"] as const;
+
+/** User-global Pi agent skills root (lowest discovery precedence). */
+export const GLOBAL_AGENT_SKILL_ROOT_SEGMENTS = ".pi/agent/skills";
+
+export function resolveVaultSkillRoots(cwd: string, policy?: Pick<ShioriPolicy, "inventory">): string[] {
   const roots = [
     join(cwd, ".pi", "skills"),
     join(cwd, ".agents", "skills"),
     join(homedir(), ".pi", "agent", "skills"),
   ];
 
+  for (const entry of policy?.inventory?.roots ?? []) {
+    const trimmed = entry.trim();
+    if (!trimmed) continue;
+    const resolved = isAbsolute(trimmed) ? resolve(trimmed) : resolve(cwd, trimmed);
+    if (!roots.includes(resolved)) {
+      roots.push(resolved);
+    }
+  }
+
+  return roots;
+}
+
+export async function discoverSkills(cwd: string, policy?: ShioriPolicy): Promise<SkillRecord[]> {
+  const roots = resolveVaultSkillRoots(cwd, policy);
+  return discoverSkillsFromRoots(roots);
+}
+
+export async function discoverSkillsFromRoots(roots: string[]): Promise<SkillRecord[]> {
   const records: SkillRecord[] = [];
   for (const root of roots) {
     const files = await findSkillFiles(root);
@@ -21,6 +45,15 @@ export async function discoverSkills(cwd: string): Promise<SkillRecord[]> {
     }
   }
   return dedupeByDiscoveryOrder(records);
+}
+
+export async function computeInventoryFingerprint(roots: string[]): Promise<string> {
+  const parts: string[] = [];
+  for (const root of roots) {
+    const files = await findSkillFiles(root);
+    parts.push(`${root}:${files.sort().join(",")}`);
+  }
+  return parts.join("|");
 }
 
 export function findDuplicates(records: SkillRecord[]): Map<string, SkillRecord[]> {
