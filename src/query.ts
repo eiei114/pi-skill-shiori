@@ -30,7 +30,8 @@ const TERM_ALIASES: Record<string, string[]> = {
 /** Whole-prompt intents → English queries that match planning skills in descriptions. */
 const INTENT_QUERY_PACKS: Array<{ test: RegExp; queries: string[] }> = [
   {
-    test: /\b(?:x|twitter)\b|tweet|timeline|follower|social(?:\s+media)?/i,
+    test:
+      /\bx\s+(?:api|data|export|follower|monitor|post|search|social|timeline|tweet)\b|\b(?:twitter|tweet|timeline|follower)\b|social(?:\s+media)?/i,
     queries: [
       "tweet search social media data",
       "twitter timeline follower export",

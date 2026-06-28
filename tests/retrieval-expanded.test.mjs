@@ -45,3 +45,8 @@ test("retrieveCandidatesExpanded expands X API social data queries", () => {
   const hits = retrieveCandidatesExpanded("X API follower export", skills, policy);
   assert.ok(hits.some((candidate) => candidate.skill.name === "x-twitter-scraper"));
 });
+
+test("retrieveCandidatesExpanded ignores unrelated bare X prompts", () => {
+  const hits = retrieveCandidatesExpanded("x coordinate transform", skills, policy);
+  assert.ok(hits.every((candidate) => candidate.skill.name !== "x-twitter-scraper"));
+});
