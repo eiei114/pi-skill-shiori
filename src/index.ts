@@ -2,6 +2,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { readFile, writeFile } from "node:fs/promises";
+import { evaluateAlwaysVisible, formatAlwaysVisibleDiagnostics } from "./always-visible.js";
 import { discoverSkills, findDuplicates } from "./discovery.js";
 import { buildSkillIndex, type SkillIndex } from "./indexer.js";
 import { loadRecommendedSkills } from "./load-skills.js";
@@ -35,6 +36,7 @@ const CANCEL_CHOICE = "Cancel";
 
 export default function piSkillShiori(pi: ExtensionAPI) {
   let index: SkillIndex | undefined;
+  let warnedAlwaysVisibleMissing = new Set<string>();
   const stats = createStats();
 
   async function reload(cwd: string): Promise<SkillIndex> {
@@ -83,7 +85,20 @@ export default function piSkillShiori(pi: ExtensionAPI) {
     const current = await ensureIndex(ctx.cwd);
     if (!current.policy.zeroCatalog.enabled) return;
 
-    const suppression = suppressSkillCatalog(event.systemPrompt);
+    const alwaysVisible = evaluateAlwaysVisible(current.policy.alwaysVisible, current.skills);
+    for (const name of alwaysVisible.missing) {
+      if (warnedAlwaysVisibleMissing.has(name)) continue;
+      warnedAlwaysVisibleMissing.add(name);
+      ctx.ui.notify(
+        `Pi Skill Shiori: always-visible skill not found in inventory: ${name}`,
+        "warning",
+      );
+    }
+
+    const suppression = suppressSkillCatalog(event.systemPrompt, {
+      alwaysVisible: current.policy.alwaysVisible,
+      skills: current.skills,
+    });
     stats.suppressionStatus = suppression.status;
     if (suppression.status === "failed-pattern-not-found") {
       ctx.ui.notify("Pi Skill Shiori: Skill Catalog suppression pattern not found; leaving system prompt unchanged.", "warning");
@@ -186,21 +201,26 @@ export default function piSkillShiori(pi: ExtensionAPI) {
     handler: async (_args, ctx) => {
       const current = await ensureIndex(ctx.cwd);
       const duplicates = findDuplicates(current.skills);
-      ctx.ui.notify(
-        [
-          "Pi Skill Shiori doctor",
-          `policy: ${getPolicyPath(ctx.cwd)}`,
-          `zeroCatalog: ${current.policy.zeroCatalog.enabled ? "enabled" : "disabled"}`,
-          `skills: ${current.skills.length}`,
-          `duplicates: ${duplicates.size}`,
-          `alwaysVisible: ${current.policy.alwaysVisible.join(", ") || "none"}`,
-          `retrievalBackend: ${current.retrievalBackend}`,
-          `suppression: ${stats.suppressionStatus}`,
-          `code: ${SHIORI_CODE_MARKER}`,
-          `builtAt: ${current.builtAt}`,
-        ].join("\n"),
-        duplicates.size > 0 || stats.suppressionStatus === "failed-pattern-not-found" ? "warning" : "info",
-      );
+      const alwaysVisible = evaluateAlwaysVisible(current.policy.alwaysVisible, current.skills);
+      const doctorLines = [
+        "Pi Skill Shiori doctor",
+        `policy: ${getPolicyPath(ctx.cwd)}`,
+        `zeroCatalog: ${current.policy.zeroCatalog.enabled ? "enabled" : "disabled"}`,
+        `skills: ${current.skills.length}`,
+        `duplicates: ${duplicates.size}`,
+        `alwaysVisible: ${current.policy.alwaysVisible.join(", ") || "none"}`,
+        ...formatAlwaysVisibleDiagnostics(alwaysVisible),
+        `retrievalBackend: ${current.retrievalBackend}`,
+        `suppression: ${stats.suppressionStatus}`,
+        `code: ${SHIORI_CODE_MARKER}`,
+        `builtAt: ${current.builtAt}`,
+      ];
+      const hasWarning =
+        duplicates.size > 0 ||
+        stats.suppressionStatus === "failed-pattern-not-found" ||
+        alwaysVisible.missing.length > 0 ||
+        alwaysVisible.duplicates.length > 0;
+      ctx.ui.notify(doctorLines.join("\n"), hasWarning ? "warning" : "info");
     },
   });
 

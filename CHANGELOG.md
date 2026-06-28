@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## [0.4.0] - 2026-06-28
+
+### Added
+
+- Always Visible Skill policy: Zero-Catalog Mode now keeps only `alwaysVisible` allowlisted skills in the Skill Catalog instead of hiding every entry.
+- Diagnostics for missing or duplicate `alwaysVisible` policy entries in `/shiori:doctor` and one-time runtime warnings for missing skills.
+- Tests for visible, missing, duplicate, and markdown catalog filtering cases.
+
+### Changed
+
+- `alwaysVisible` policy entries are normalized to a deduplicated allowlist at load time.
+
 ## [0.3.2] - 2026-06-24
 
 ### Added

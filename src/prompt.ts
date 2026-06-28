@@ -1,11 +1,37 @@
-import type { SkillCandidate, SuppressionStatus } from "./types.js";
+import { normalizeAlwaysVisible } from "./always-visible.js";
+import type { SkillCandidate, SkillRecord, SuppressionStatus } from "./types.js";
 
 export interface CatalogSuppressionResult {
   systemPrompt: string;
   status: SuppressionStatus;
 }
 
+export interface SuppressCatalogOptions {
+  alwaysVisible: string[];
+  skills: SkillRecord[];
+}
+
 const COMPACT_DESCRIPTION_LIMIT = 120;
+
+const CATALOG_BOUNDARY_PATTERNS: Array<{ pattern: RegExp; format: "xml" | "markdown" }> = [
+  {
+    pattern:
+      /\r?\n\r?\nThe following skills provide specialized instructions for specific tasks\.\r?\n[\s\S]*?\r?\n<available_skills>[\s\S]*?\r?\n<\/available_skills>/,
+    format: "xml",
+  },
+  {
+    pattern: /(^|\r?\n)<available_skills>[\s\S]*?<\/available_skills>/i,
+    format: "xml",
+  },
+  {
+    pattern: /(^|\r?\n)#{2,4}\s*Available skills\b[\s\S]*?(?=\r?\n#{2,4}\s*How to use skills\b)/i,
+    format: "markdown",
+  },
+  {
+    pattern: /(^|\r?\n)#{2,4}\s*Available skills\b[\s\S]*?(?=\r?\n#{2,4}\s*Fallback\b)/i,
+    format: "markdown",
+  },
+];
 
 export function formatCandidateInjection(candidates: SkillCandidate[]): string {
   if (candidates.length === 0) return "";
@@ -83,24 +109,16 @@ export function compactDescription(description: string, maxChars = COMPACT_DESCR
   return `${singleLine.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
 }
 
-export function suppressSkillCatalog(systemPrompt: string): CatalogSuppressionResult {
-  const replacement = [
-    "### Available skills",
-    "Normal Skill Catalog hidden by Pi Skill Shiori.",
-    "Use injected candidates or shiori_load_skill when relevant.",
-    "Explicit /skill:name invocation remains allowed.",
-  ].join("\n");
-
-  const patterns = [
-    /\r?\n\r?\nThe following skills provide specialized instructions for specific tasks\.\r?\n[\s\S]*?\r?\n<available_skills>[\s\S]*?\r?\n<\/available_skills>/,
-    /(^|\r?\n)<available_skills>[\s\S]*?<\/available_skills>/i,
-    /(^|\r?\n)#{2,4}\s*Available skills\b[\s\S]*?(?=\r?\n#{2,4}\s*How to use skills\b)/i,
-    /(^|\r?\n)#{2,4}\s*Available skills\b[\s\S]*?(?=\r?\n#{2,4}\s*Fallback\b)/i,
-  ];
-  for (const pattern of patterns) {
-    if (!pattern.test(systemPrompt)) continue;
+export function suppressSkillCatalog(
+  systemPrompt: string,
+  options?: SuppressCatalogOptions,
+): CatalogSuppressionResult {
+  for (const { pattern, format } of CATALOG_BOUNDARY_PATTERNS) {
+    const match = systemPrompt.match(pattern);
+    if (!match) continue;
+    const replacement = buildFilteredCatalogReplacement(match[0], format, options);
     return {
-      systemPrompt: systemPrompt.replace(pattern, `${replacement}\n`),
+      systemPrompt: systemPrompt.replace(pattern, replacement),
       status: "suppressed",
     };
   }
@@ -110,6 +128,158 @@ export function suppressSkillCatalog(systemPrompt: string): CatalogSuppressionRe
   }
 
   return { systemPrompt, status: "failed-pattern-not-found" };
+}
+
+function buildFilteredCatalogReplacement(
+  catalogSection: string,
+  format: "xml" | "markdown",
+  options?: SuppressCatalogOptions,
+): string {
+  if (!options) {
+    return [
+      "### Available skills",
+      "Normal Skill Catalog hidden by Pi Skill Shiori.",
+      "Use injected candidates or shiori_load_skill when relevant.",
+      "Explicit /skill:name invocation remains allowed.",
+    ].join("\n");
+  }
+
+  const { allowlist } = normalizeAlwaysVisible(options.alwaysVisible);
+  const allowSet = new Set(allowlist);
+  const skillsByName = new Map(options.skills.map((skill) => [skill.name, skill]));
+
+  if (format === "xml") {
+    return buildFilteredXmlCatalog(catalogSection, allowSet, allowlist, skillsByName);
+  }
+
+  return buildFilteredMarkdownCatalog(catalogSection, allowSet, allowlist, skillsByName);
+}
+
+function buildFilteredXmlCatalog(
+  catalogSection: string,
+  allowSet: Set<string>,
+  allowlist: string[],
+  skillsByName: Map<string, SkillRecord>,
+): string {
+  const prefix = extractXmlCatalogPrefix(catalogSection);
+  const keptBlocks: string[] = [];
+  const keptNames = new Set<string>();
+
+  for (const block of extractXmlSkillBlocks(catalogSection)) {
+    const name = parseXmlSkillName(block);
+    if (!name || !allowSet.has(name)) continue;
+    keptBlocks.push(block);
+    keptNames.add(name);
+  }
+
+  for (const name of allowlist) {
+    if (keptNames.has(name)) continue;
+    const record = skillsByName.get(name);
+    if (!record) continue;
+    keptBlocks.push(formatXmlSkillBlock(record));
+    keptNames.add(name);
+  }
+
+  if (keptBlocks.length === 0) {
+    return buildHiddenCatalogStub();
+  }
+
+  const lines = [...prefix, "<available_skills>"];
+  for (const block of keptBlocks) {
+    lines.push(block);
+  }
+  lines.push("</available_skills>");
+  return lines.join("\n");
+}
+
+function buildFilteredMarkdownCatalog(
+  catalogSection: string,
+  allowSet: Set<string>,
+  allowlist: string[],
+  skillsByName: Map<string, SkillRecord>,
+): string {
+  const headerMatch = catalogSection.match(/(^|\r?\n)(#{2,4}\s*Available skills\b[^\n]*)/i);
+  const header = headerMatch?.[2] ?? "### Available skills";
+  const keptLines: string[] = [];
+  const keptNames = new Set<string>();
+
+  for (const line of catalogSection.split(/\r?\n/)) {
+    const match = line.match(/^\s*[-*]\s+\*\*([^*]+)\*\*:\s*(.*)$/);
+    if (!match) continue;
+    const name = match[1].trim();
+    if (!allowSet.has(name)) continue;
+    keptLines.push(`- **${name}**: ${match[2].trim()}`);
+    keptNames.add(name);
+  }
+
+  for (const name of allowlist) {
+    if (keptNames.has(name)) continue;
+    const record = skillsByName.get(name);
+    if (!record) continue;
+    keptLines.push(`- **${record.name}**: ${compactDescription(record.description, 240)}`);
+    keptNames.add(name);
+  }
+
+  if (keptLines.length === 0) {
+    return buildHiddenCatalogStub();
+  }
+
+  return [`${header}`, "Pi Skill Shiori: only always-visible skills remain in the Skill Catalog.", ...keptLines].join(
+    "\n",
+  );
+}
+
+function buildHiddenCatalogStub(): string {
+  return [
+    "### Available skills",
+    "Normal Skill Catalog hidden by Pi Skill Shiori.",
+    "Use injected candidates or shiori_load_skill when relevant.",
+    "Explicit /skill:name invocation remains allowed.",
+  ].join("\n");
+}
+
+function extractXmlCatalogPrefix(catalogSection: string): string[] {
+  const marker = catalogSection.search(/<available_skills>/i);
+  if (marker <= 0) return [];
+  return catalogSection.slice(0, marker).replace(/\r?\n$/, "").split(/\r?\n/).filter(Boolean);
+}
+
+function extractXmlSkillBlocks(catalogSection: string): string[] {
+  return [...catalogSection.matchAll(/<skill>[\s\S]*?<\/skill>/gi)].map((match) => match[0]);
+}
+
+function parseXmlSkillName(block: string): string | undefined {
+  const match = block.match(/<name>([\s\S]*?)<\/name>/i);
+  if (!match) return undefined;
+  return unescapeXml(match[1].trim());
+}
+
+function formatXmlSkillBlock(skill: SkillRecord): string {
+  return [
+    "  <skill>",
+    `    <name>${escapeXml(skill.name)}</name>`,
+    `    <description>${escapeXml(skill.description)}</description>`,
+    `    <location>${escapeXml(skill.path)}</location>`,
+    "  </skill>",
+  ].join("\n");
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function unescapeXml(value: string): string {
+  return value
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
+    .replace(/&amp;/g, "&");
 }
 
 function hasSkillCatalogSignal(systemPrompt: string): boolean {

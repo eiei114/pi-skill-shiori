@@ -1,6 +1,6 @@
 {
   "name": "pi-skill-shiori",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Pi extension that reduces Agent Skill catalog tokens with policy-based skill retrieval and on-demand skill loading.",
   "type": "module",
   "license": "MIT",
