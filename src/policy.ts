@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parse } from "yaml";
+import { normalizeAlwaysVisible } from "./always-visible.js";
 import type { ShioriPolicy } from "./types.js";
 
 export const DEFAULT_POLICY: ShioriPolicy = {
@@ -40,7 +41,7 @@ function normalizePolicy(policy: Partial<ShioriPolicy> | undefined): ShioriPolic
       maxCandidates: policy?.candidateInjection?.maxCandidates ?? DEFAULT_POLICY.candidateInjection.maxCandidates,
       minScore: policy?.candidateInjection?.minScore ?? DEFAULT_POLICY.candidateInjection.minScore,
     },
-    alwaysVisible: policy?.alwaysVisible ?? DEFAULT_POLICY.alwaysVisible,
+    alwaysVisible: normalizeAlwaysVisible(policy?.alwaysVisible ?? DEFAULT_POLICY.alwaysVisible).allowlist,
     skills: policy?.skills ?? DEFAULT_POLICY.skills,
   };
 }

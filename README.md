@@ -17,7 +17,7 @@ For maintenance priorities and the phased plan, see [`ROADMAP.md`](ROADMAP.md).
 
 ## Status
 
-`0.3.1` is an early working release. It is useful for local Pi workflows, but the prompt-boundary suppression logic is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
+`0.4.0` is an early working release. It is useful for local Pi workflows, but the prompt-boundary suppression logic is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
 
 ## Requirements
 
@@ -39,7 +39,7 @@ Pi core packages are peer dependencies and should be supplied by the Pi runtime:
 After the package is published to npm:
 
 ```bash
-pi install npm:pi-skill-shiori@0.3.1
+pi install npm:pi-skill-shiori@0.4.0
 ```
 
 Without a version pin:
@@ -53,7 +53,7 @@ pi install npm:pi-skill-shiori
 Use `-l` to write the package to the current project’s `.pi/settings.json`:
 
 ```bash
-pi install -l npm:pi-skill-shiori@0.3.1
+pi install -l npm:pi-skill-shiori@0.4.0
 ```
 
 Without a version pin:
@@ -67,7 +67,7 @@ Equivalent pinned manual `.pi/settings.json` entry:
 ```json
 {
   "packages": [
-    "npm:pi-skill-shiori@0.3.1"
+    "npm:pi-skill-shiori@0.4.0"
   ]
 }
 ```
@@ -85,7 +85,7 @@ Equivalent unpinned manual `.pi/settings.json` entry:
 ### Global install from GitHub
 
 ```bash
-pi install git:github.com/eiei114/pi-skill-shiori@v0.3.1
+pi install git:github.com/eiei114/pi-skill-shiori@v0.4.0
 ```
 
 Without a tag pin:
@@ -97,7 +97,7 @@ pi install git:github.com/eiei114/pi-skill-shiori
 ### Project-local install from GitHub
 
 ```bash
-pi install -l git:github.com/eiei114/pi-skill-shiori@v0.3.1
+pi install -l git:github.com/eiei114/pi-skill-shiori@v0.4.0
 ```
 
 Without a tag pin:
@@ -168,7 +168,8 @@ Policy rules:
 
 - `defaults.activation: explicit` is the safe default. Unlisted skills are not auto-candidates.
 - `activation: triggerable` allows Shiori to recommend the skill for matching requests.
-- `alwaysVisible` lists skills that should remain visible/operational in Zero-Catalog workflows.
+- `alwaysVisible` lists skills that should remain visible in the Skill Catalog during Zero-Catalog Mode. Use this for a tiny safety-critical allowlist instead of broad trigger rules.
+- Missing `alwaysVisible` entries are reported by `/shiori:doctor` and warned once per session when Zero-Catalog Mode runs.
 - `candidateInjection.maxCandidates` limits how many suggestions enter the prompt.
 - `candidateInjection.minScore` drops weak matches.
 
@@ -280,7 +281,7 @@ npm login
 After publishing, verify the Pi install path:
 
 ```bash
-pi install npm:pi-skill-shiori@0.3.1
+pi install npm:pi-skill-shiori@0.4.0
 pi install npm:pi-skill-shiori
 pi list
 /shiori:doctor
