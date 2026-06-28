@@ -12,12 +12,13 @@ For maintenance priorities and the phased plan, see [`ROADMAP.md`](ROADMAP.md).
 - **Policy-based retrieval**: treats skills as explicit by default and only candidates skills marked as triggerable.
 - **Compact candidate injection**: injects short skill suggestions instead of full `SKILL.md` files.
 - **On-demand loading**: exposes `shiori_load_skill` so the model can load one selected skill body when needed.
+- **Vault-wide skill inventory**: indexes skills from project and user-global roots, with optional extra roots in policy.
 - **SQLite FTS retrieval**: indexes skill names, descriptions, and policy triggers with `node:sqlite` + FTS5, with token-match fallback.
 - **Compact UI output**: keeps skill-load logs short while still passing full skill text to the model.
 
 ## Status
 
-`0.4.0` is an early working release. It is useful for local Pi workflows, but the prompt-boundary suppression logic is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
+`0.5.0` is an early working release. It is useful for local Pi workflows, but the prompt-boundary suppression logic is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
 
 ## Requirements
 
@@ -39,7 +40,7 @@ Pi core packages are peer dependencies and should be supplied by the Pi runtime:
 After the package is published to npm:
 
 ```bash
-pi install npm:pi-skill-shiori@0.4.0
+pi install npm:pi-skill-shiori@0.5.0
 ```
 
 Without a version pin:
@@ -53,7 +54,7 @@ pi install npm:pi-skill-shiori
 Use `-l` to write the package to the current project’s `.pi/settings.json`:
 
 ```bash
-pi install -l npm:pi-skill-shiori@0.4.0
+pi install -l npm:pi-skill-shiori@0.5.0
 ```
 
 Without a version pin:
@@ -67,7 +68,7 @@ Equivalent pinned manual `.pi/settings.json` entry:
 ```json
 {
   "packages": [
-    "npm:pi-skill-shiori@0.4.0"
+    "npm:pi-skill-shiori@0.5.0"
   ]
 }
 ```
@@ -85,7 +86,7 @@ Equivalent unpinned manual `.pi/settings.json` entry:
 ### Global install from GitHub
 
 ```bash
-pi install git:github.com/eiei114/pi-skill-shiori@v0.4.0
+pi install git:github.com/eiei114/pi-skill-shiori@v0.5.0
 ```
 
 Without a tag pin:
@@ -97,7 +98,7 @@ pi install git:github.com/eiei114/pi-skill-shiori
 ### Project-local install from GitHub
 
 ```bash
-pi install -l git:github.com/eiei114/pi-skill-shiori@v0.4.0
+pi install -l git:github.com/eiei114/pi-skill-shiori@v0.5.0
 ```
 
 Without a tag pin:
@@ -131,7 +132,38 @@ Or add a relative local path to `.pi/settings.json`:
 }
 ```
 
-> Note: policy/index changes can be refreshed with `/shiori:reload`, but extension code changes require restarting the Pi process because Node keeps imported extension modules cached.
+> Note: policy/index changes can be refreshed with `/shiori:reload`, and Shiori auto-refreshes the vault-wide inventory when skill files change under indexed roots. Extension code changes still require restarting the Pi process because Node keeps imported extension modules cached.
+
+## Vault-wide skill inventory
+
+Shiori builds a searchable inventory from these roots (in discovery order; first match wins on duplicate skill names):
+
+| Root | Scope |
+|---|---|
+| `<cwd>/.pi/skills` | Project-local Pi skills |
+| `<cwd>/.agents/skills` | Project-local Agent skills |
+| `~/.pi/agent/skills` | User-global Pi agent skills |
+| `inventory.roots` entries | Optional extra roots (relative to `<cwd>` or absolute) |
+
+Refresh behavior:
+
+- **Session start** builds the initial inventory and SQLite FTS index.
+- **Auto-refresh** (default) rescans roots before retrieval when any `SKILL.md` path changes. This is a directory walk only; it rebuilds the FTS index when the fingerprint changes.
+- **Manual refresh** via `/shiori:reload` always rebuilds the inventory and FTS index immediately.
+- Disable auto-refresh when you prefer a fixed snapshot:
+
+```yaml
+inventory:
+  autoRefreshOnChange: false
+  roots:
+    - custom-skills
+```
+
+Cost/latency trade-offs:
+
+- Auto-refresh adds a shallow filesystem walk on each agent turn while enabled. It avoids stale search results after local skill edits without restarting Pi.
+- A full refresh rebuilds the SQLite FTS database and scales with total indexed skills and description length. Large vaults with many roots may prefer `autoRefreshOnChange: false` plus explicit `/shiori:reload` after bulk imports.
+- Search stays description-first and policy-aware: only `triggerable` skills become candidates, with FTS ranking over names, descriptions, and policy triggers.
 
 ## Configure
 
@@ -185,7 +217,7 @@ This writes a generated review file next to `.pi/skill-shiori.yml`. Review it be
 
 | Command | Purpose |
 |---|---|
-| `/shiori:doctor` | Show policy path, inventory count, retrieval backend, suppression status, and code marker. |
+| `/shiori:doctor` | Show policy path, indexed roots, inventory count, retrieval backend, suppression status, and code marker. |
 | `/shiori:bootstrap` | Generate a review draft policy from discovered skill descriptions. |
 | `/shiori:reload` | Ask what to reload, then rebuild Shiori’s skill inventory and optionally ask Pi to reload runtime resources. Code changes may still need full restart. |
 | `/shiori:recommend` | Ask what you need help with, then either pre-load matches and queue the task for the agent or review recommendations only. Planning phrases (e.g. `計画を立てたい`) return the dev-plan intake template without dumping SKILL bodies. |
@@ -281,7 +313,7 @@ npm login
 After publishing, verify the Pi install path:
 
 ```bash
-pi install npm:pi-skill-shiori@0.4.0
+pi install npm:pi-skill-shiori@0.5.0
 pi install npm:pi-skill-shiori
 pi list
 /shiori:doctor

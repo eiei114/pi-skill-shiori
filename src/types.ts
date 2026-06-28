@@ -14,6 +14,12 @@ export interface ShioriPolicy {
     minScore: number;
   };
   alwaysVisible: string[];
+  inventory?: {
+    /** Extra skill roots relative to cwd or absolute paths. */
+    roots?: string[];
+    /** Rebuild the index when skill files change under any root (default: true). */
+    autoRefreshOnChange?: boolean;
+  };
   skills: Record<string, SkillPolicy>;
 }
 
@@ -49,4 +55,6 @@ export interface ShioriStats {
   retrievalBackend: RetrievalBackend;
   suppressionStatus: SuppressionStatus;
   lastReloadAt?: string;
+  inventoryRefreshCount: number;
+  inventoryAutoRefreshCount: number;
 }
