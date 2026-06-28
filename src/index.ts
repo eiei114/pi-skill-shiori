@@ -8,6 +8,7 @@ import type { SkillIndex } from "./indexer.js";
 import { loadRecommendedSkills } from "./load-skills.js";
 import { formatPlanningKickoffMessage, isPlanningIntent } from "./planning-kickoff.js";
 import { createStats } from "./metrics.js";
+import { createRecommendationFeedback } from "./recommendation-feedback.js";
 import { getPolicyPath, loadPolicy } from "./policy.js";
 import {
   formatCandidateDetail,
@@ -40,6 +41,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
   let inventoryRoots: string[] = [];
   let warnedAlwaysVisibleMissing = new Set<string>();
   const stats = createStats();
+  const recommendationFeedback = createRecommendationFeedback();
 
   async function reload(cwd: string): Promise<SkillIndex> {
     const policy = await loadPolicy(cwd);
@@ -126,8 +128,16 @@ export default function piSkillShiori(pi: ExtensionAPI) {
     }
 
     const candidates = retrieveCandidatesExpanded(event.prompt, current.skills, current.policy, current);
-    if (candidates.length === 0) stats.zeroCandidateCount += 1;
-    else stats.candidateHitCount += 1;
+    if (candidates.length === 0) {
+      stats.zeroCandidateCount += 1;
+      recommendationFeedback.recordZeroCandidates("auto-inject");
+    } else {
+      stats.candidateHitCount += 1;
+      recommendationFeedback.recordRecommendation(
+        "auto-inject",
+        candidates.map((candidate) => candidate.skill.name),
+      );
+    }
 
     const injection = formatCandidateInjection(candidates);
     const candidateSection = injection ? `\n\n## Pi Skill Shiori Candidates\n\n${injection}\n` : "";
@@ -153,7 +163,13 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       const current = await ensureIndex(ctx.cwd);
       const policy = withRecommendLimits(current);
       const candidates = retrieveCandidatesExpanded(params.task, current.skills, policy, current);
+      const candidateNames = candidates.map((candidate) => candidate.skill.name);
       const loaded = await loadRecommendedSkills(candidates);
+      recommendationFeedback.recordRecommendation(
+        "tool",
+        candidateNames,
+        loaded.map((entry) => entry.candidate.skill.name),
+      );
       const summary = formatLoadedSkillsSummary(loaded);
       const blocks = loaded.map(({ candidate, content }) => ({
         type: "text" as const,
@@ -193,6 +209,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       if (!record) throw new Error(`Skill not found: ${params.skill}`);
       const content = await readFile(record.path, "utf8");
       stats.loadedSkillCount += 1;
+      recommendationFeedback.recordSkillLoaded(record.name);
       const details: ShioriLoadDetails = {
         skill: record.name,
         path: record.path,
@@ -305,9 +322,15 @@ export default function piSkillShiori(pi: ExtensionAPI) {
 
       const policy = withRecommendLimits(current);
       const candidates = retrieveCandidatesExpanded(query, current.skills, policy, current);
+      const candidateNames = candidates.map((candidate) => candidate.skill.name);
       const planning = isPlanningIntent(query);
       const reviewOnly = action === RECOMMEND_REVIEW_ONLY;
       const loaded = planning || reviewOnly ? [] : await loadRecommendedSkills(candidates);
+      recommendationFeedback.recordRecommendation(
+        "command",
+        candidateNames,
+        loaded.map((entry) => entry.candidate.skill.name),
+      );
       const summary = planning || reviewOnly
         ? candidates.length > 0
           ? `Matched ${candidates.length} skill(s): ${candidates.map((c) => c.skill.name).join(", ")}`
@@ -369,9 +392,20 @@ export default function piSkillShiori(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("shiori:stats", {
-    description: "Show Pi Skill Shiori operational counters",
+    description: "Show Pi Skill Shiori operational counters and recommendation feedback",
     handler: async (_args, ctx) => {
-      ctx.ui.notify(JSON.stringify(stats, null, 2), "info");
+      const payload = {
+        ...stats,
+        recommendationFeedback: recommendationFeedback.summarize(),
+      };
+      ctx.ui.notify(
+        [
+          recommendationFeedback.formatSummary(),
+          "",
+          JSON.stringify(payload, null, 2),
+        ].join("\n"),
+        "info",
+      );
     },
   });
 

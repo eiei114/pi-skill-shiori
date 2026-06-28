@@ -221,7 +221,7 @@ This writes a generated review file next to `.pi/skill-shiori.yml`. Review it be
 | `/shiori:bootstrap` | Generate a review draft policy from discovered skill descriptions. |
 | `/shiori:reload` | Ask what to reload, then rebuild Shiori’s skill inventory and optionally ask Pi to reload runtime resources. Code changes may still need full restart. |
 | `/shiori:recommend` | Ask what you need help with, then either pre-load matches and queue the task for the agent or review recommendations only. Planning phrases (e.g. `計画を立てたい`) return the dev-plan intake template without dumping SKILL bodies. |
-| `/shiori:stats` | Show operational counters. |
+| `/shiori:stats` | Show operational counters and a compact recommendation quality summary. |
 
 ## Tool
 
@@ -265,6 +265,41 @@ Example:
 ```text
 retrievalBackend: sqlite-fts
 code: prompt-boundary-v3
+```
+
+## Recommendation feedback metrics
+
+`/shiori:stats` includes session-local recommendation feedback so operators can tune trigger rules from real outcomes instead of guesswork.
+
+Recorded (bounded, in-memory for the current Pi session):
+
+- recommendation offers and candidate slot counts per source (`auto-inject`, `command`, `tool`)
+- load follow-through when recommended skills are pre-loaded or later loaded via `shiori_load_skill`
+- abandoned recommendation flows (candidates shown but not loaded, e.g. review-only mode)
+- zero-candidate queries (obvious misses)
+- per-skill offered/loaded tallies (up to 50 skill names, oldest entries dropped first)
+
+Not recorded:
+
+- user prompts, task descriptions, or transcript bodies
+- skill `SKILL.md` contents
+- filesystem paths beyond skill names already visible in policy/inventory
+
+Retention boundary:
+
+- counters reset when the Pi session ends
+- no disk persistence or cross-session analytics in this slice
+- inspect the compact summary at the top of `/shiori:stats`, with full JSON below
+
+Example summary line:
+
+```text
+Recommendation feedback (session-local, no prompts stored)
+offers: 4 | candidate slots: 7 | loaded: 3
+abandoned: 1 | zero-candidate queries: 2 | follow-through: 42.9%
+auto-inject: offers=2, loaded=1, zeroHits=1
+command: offers=1, loaded=2, zeroHits=1
+top skills: auth-helper(1/2), deploy-kit(1/1)
 ```
 
 ## Development
