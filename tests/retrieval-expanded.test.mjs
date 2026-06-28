@@ -23,6 +23,12 @@ const skills = [
     path: "/tmp/git-guardrails/SKILL.md",
     source: "/tmp/.pi/skills",
   },
+  {
+    name: "x-twitter-scraper",
+    description: "Tweet search, timeline monitoring, follower export, and social media data collection",
+    path: "/tmp/x-twitter-scraper/SKILL.md",
+    source: "/tmp/.pi/skills",
+  },
 ];
 
 test("retrieveCandidatesExpanded finds browser skills from natural language", () => {
@@ -33,4 +39,9 @@ test("retrieveCandidatesExpanded finds browser skills from natural language", ()
 test("retrieveCandidatesExpanded expands Japanese auth queries", () => {
   const hits = retrieveCandidatesExpanded("認証まわりのスキルを探して", skills, policy);
   assert.ok(hits.length > 0);
+});
+
+test("retrieveCandidatesExpanded expands X API social data queries", () => {
+  const hits = retrieveCandidatesExpanded("X API follower export", skills, policy);
+  assert.ok(hits.some((candidate) => candidate.skill.name === "x-twitter-scraper"));
 });
