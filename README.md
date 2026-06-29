@@ -267,6 +267,24 @@ retrievalBackend: sqlite-fts
 code: prompt-boundary-v3
 ```
 
+## Recommendation reason badges
+
+Recommended skills show compact reason badges so you can see why Shiori surfaced them:
+
+- `[trigger]` — a policy trigger phrase matched
+- `[description]` — skill name/description tokens matched strongly
+- `[low match]` — passed `minScore` but near the threshold
+
+Badges appear in auto-inject candidates, `/shiori:recommend` review mode, pre-load summaries, and the `shiori_recommend` tool line. Unclassified matches omit the badge instead of showing a long explanation.
+
+Example with multiple surfaced skills:
+
+```text
+Matched 2 skill(s): playwright-cli [trigger], gstack-browse [description]
+```
+
+See [`Docs/recommendation-surface.md`](Docs/recommendation-surface.md) for how badges relate to Always Visible Skill policy and recommendation feedback metrics.
+
 ## Recommendation feedback metrics
 
 `/shiori:stats` includes session-local recommendation feedback so operators can tune trigger rules from real outcomes instead of guesswork.

@@ -1,3 +1,4 @@
+import { attachRecommendationReason } from "./recommendation-reason.js";
 import type { ShioriPolicy, SkillCandidate, SkillRecord } from "./types.js";
 
 interface RetrievalIndex {
@@ -51,22 +52,30 @@ function evaluateSkill(
   const includes = skillPolicy?.triggers?.include ?? [];
   const matchedInclude = includes.find((trigger) => includesNormalized(normalizedQuery, trigger));
   if (matchedInclude) {
-    return {
-      skill,
-      score: 0.95,
-      why: `matched trigger "${matchedInclude}"`,
-    };
+    return attachRecommendationReason(
+      {
+        skill,
+        score: 0.95,
+        why: `matched trigger "${matchedInclude}"`,
+      },
+      "trigger",
+      policy.candidateInjection.minScore,
+    );
   }
   if (exactTriggerOnly) return undefined;
 
   const text = normalize(`${skill.name} ${skill.description} ${includes.join(" ")}`);
   const tokenScore = scoreTokens(normalizedQuery, text);
   if (tokenScore < policy.candidateInjection.minScore) return undefined;
-  return {
-    skill,
-    score: tokenScore,
-    why: "matched skill description",
-  };
+  return attachRecommendationReason(
+    {
+      skill,
+      score: tokenScore,
+      why: "matched skill description",
+    },
+    "description",
+    policy.candidateInjection.minScore,
+  );
 }
 
 function normalize(input: string): string {

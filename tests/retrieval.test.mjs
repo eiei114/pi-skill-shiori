@@ -33,7 +33,25 @@ test("retrieveCandidates scores all skills when fts returns no matches", () => {
   };
 
   const hits = retrieveCandidates("browser scraping screenshot", skills, policy, index);
-  assert.ok(hits.some((candidate) => candidate.skill.name === "playwright-cli"));
+  const hit = hits.find((candidate) => candidate.skill.name === "playwright-cli");
+  assert.ok(hit);
+  assert.equal(hit?.reason, "description");
+});
+
+test("retrieveCandidates assigns trigger reason badges from policy triggers", () => {
+  const triggerPolicy = {
+    ...policy,
+    skills: {
+      "playwright-cli": {
+        activation: "triggerable",
+        triggers: { include: ["browser"], exclude: [] },
+      },
+    },
+  };
+  const index = { search() { return []; } };
+  const hits = retrieveCandidates("browser scraping screenshot", skills, triggerPolicy, index);
+  const hit = hits.find((candidate) => candidate.skill.name === "playwright-cli");
+  assert.equal(hit?.reason, "trigger");
 });
 
 test("retrieveCandidates finds vault search skills from description tokens", () => {
@@ -44,5 +62,7 @@ test("retrieveCandidates finds vault search skills from description tokens", () 
   };
 
   const hits = retrieveCandidates("vault search markdown", skills, policy, index);
-  assert.ok(hits.some((candidate) => candidate.skill.name === "obsidian-qmd"));
+  const hit = hits.find((candidate) => candidate.skill.name === "obsidian-qmd");
+  assert.ok(hit);
+  assert.ok(hit?.reason === "description" || hit?.reason === "low-confidence");
 });

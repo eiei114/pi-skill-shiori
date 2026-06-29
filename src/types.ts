@@ -39,10 +39,13 @@ export interface SkillRecord {
   source: string;
 }
 
+export type RecommendationReasonKind = "trigger" | "description" | "low-confidence";
+
 export interface SkillCandidate {
   skill: SkillRecord;
   score: number;
   why: string;
+  reason: RecommendationReasonKind | null;
 }
 
 export interface ShioriStats {

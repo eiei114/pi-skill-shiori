@@ -18,6 +18,7 @@ test("formatRecommendKickoffMessage embeds multiple pre-loaded skills", () => {
         },
         score: 1,
         why: "matched skill description",
+        reason: "description",
       },
       content: "# Playwright\n\nUse browser automation.",
     },
@@ -31,6 +32,7 @@ test("formatRecommendKickoffMessage embeds multiple pre-loaded skills", () => {
         },
         score: 0.8,
         why: "matched skill description",
+        reason: "description",
       },
       content: "# GStack\n\nBrowse the web.",
     },
@@ -38,8 +40,8 @@ test("formatRecommendKickoffMessage embeds multiple pre-loaded skills", () => {
 
   assert.match(message, /browser scraping screenshot/);
   assert.match(message, /pre-loaded 2 skill\(s\)/);
-  assert.match(message, /playwright-cli/);
-  assert.match(message, /gstack-browse/);
+  assert.match(message, /playwright-cli \[description\]/);
+  assert.match(message, /gstack-browse \[description\]/);
   assert.match(message, /# Playwright/);
   assert.match(message, /# GStack/);
 });
@@ -56,13 +58,14 @@ test("formatLoadedSkillsSummary lists all matches compactly", () => {
         },
         score: 1,
         why: "matched skill description",
+        reason: "description",
       },
       content: "",
     },
   ]);
 
   assert.match(summary, /Pre-loaded 1 skill\(s\)/);
-  assert.match(summary, /playwright-cli \(1\.00\)/);
+  assert.match(summary, /playwright-cli \[description\] \(1\.00\)/);
 });
 
 function sampleXmlCatalog() {
