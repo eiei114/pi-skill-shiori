@@ -17,6 +17,7 @@ import {
   formatRecommendKickoffMessage,
   suppressSkillCatalog,
 } from "./prompt.js";
+import { formatReasonBadgeSuffix } from "./recommendation-reason.js";
 import { retrieveCandidatesExpanded } from "./retrieval-expanded.js";
 import type { SkillRecord } from "./types.js";
 
@@ -179,13 +180,23 @@ export default function piSkillShiori(pi: ExtensionAPI) {
         content: summary
           ? [{ type: "text", text: summary }, ...blocks]
           : [{ type: "text", text: "No matching skills for that task." }],
-        details: { query: params.task, matches: candidates.map((c) => c.skill.name) },
+        details: {
+          query: params.task,
+          matches: candidates.map((c) => c.skill.name),
+          badges: candidates.map((c) => formatReasonBadgeSuffix(c.reason).trim()).filter(Boolean),
+        },
       };
     },
     renderResult(result, { expanded }, theme) {
-      const details = result.details as { query?: string; matches?: string[] } | undefined;
+      const details = result.details as
+        | { query?: string; matches?: string[]; badges?: string[] }
+        | undefined;
       const names = details?.matches?.join(", ") ?? "none";
-      const collapsed = `${theme.fg("success", "✓ Shiori")} ${theme.bold(names)}`;
+      const badgeText =
+        details?.badges && details.badges.length > 0
+          ? ` ${theme.fg("muted", details.badges.join(" "))}`
+          : "";
+      const collapsed = `${theme.fg("success", "✓ Shiori")} ${theme.bold(names)}${badgeText}`;
       if (!expanded) return new Text(collapsed, 0, 0);
       const query = details?.query ? `\n${theme.fg("dim", details.query)}` : "";
       return new Text(`${collapsed}${query}`, 0, 0);
@@ -333,7 +344,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       );
       const summary = planning || reviewOnly
         ? candidates.length > 0
-          ? `Matched ${candidates.length} skill(s): ${candidates.map((c) => c.skill.name).join(", ")}`
+          ? `Matched ${candidates.length} skill(s): ${candidates.map((c) => `${c.skill.name}${formatReasonBadgeSuffix(c.reason)}`).join(", ")}`
           : ""
         : formatLoadedSkillsSummary(loaded);
 
@@ -364,14 +375,16 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       }
 
       const choice = await ctx.ui.select("Follow up on a recommendation:", [
-        ...candidates.map((candidate) => candidate.skill.name),
+        ...candidates.map((candidate) => `${candidate.skill.name}${formatReasonBadgeSuffix(candidate.reason)}`),
         "Done",
       ]);
       if (!choice || choice === "Done") {
         return;
       }
 
-      const selected = candidates.find((candidate) => candidate.skill.name === choice);
+      const selected = candidates.find(
+        (candidate) => choice.startsWith(candidate.skill.name),
+      );
       if (!selected) {
         return;
       }

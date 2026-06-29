@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## [0.6.0] - 2026-06-29
+
+### Added
+
+- Bounded recommendation reason badges (`[trigger]`, `[description]`, `[low match]`) on recommended skills in auto-inject, `/shiori:recommend`, and `shiori_recommend` surfaces.
+- `Docs/recommendation-surface.md` describing badge vocabulary, a multi-skill example, and how badges relate to Always Visible Skill policy and recommendation metrics.
+- Tests for reason present, absent, low-confidence, and badge formatting.
+
+### Changed
+
+- Candidate summaries use compact badges instead of freeform `Why:` lines in the default Shiori surfaces.
+
 ## [0.5.0] - 2026-06-28
 
 ### Added

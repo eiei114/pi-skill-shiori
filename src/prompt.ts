@@ -1,4 +1,5 @@
 import { normalizeAlwaysVisible } from "./always-visible.js";
+import { formatReasonBadgeSuffix } from "./recommendation-reason.js";
 import type { SkillCandidate, SkillRecord, SuppressionStatus } from "./types.js";
 
 export interface CatalogSuppressionResult {
@@ -39,7 +40,7 @@ export function formatCandidateInjection(candidates: SkillCandidate[]): string {
   for (const candidate of candidates) {
     const desc = compactDescription(candidate.skill.description, COMPACT_DESCRIPTION_LIMIT);
     lines.push(
-      `- ${candidate.skill.name}: ${desc} Reason: ${candidate.why}. Load: shiori_load_skill({ skill: "${candidate.skill.name}" })`,
+      `- ${candidate.skill.name}${formatReasonBadgeSuffix(candidate.reason)}: ${desc} Load: shiori_load_skill({ skill: "${candidate.skill.name}" })`,
     );
   }
   return lines.join("\n");
@@ -70,8 +71,8 @@ export function formatRecommendKickoffMessage(
 
   for (const { candidate, content } of loaded) {
     lines.push(
-      `### Skill: ${candidate.skill.name}`,
-      `Score: ${candidate.score.toFixed(2)} | Why: ${candidate.why}`,
+      `### Skill: ${candidate.skill.name}${formatReasonBadgeSuffix(candidate.reason)}`,
+      `Score: ${candidate.score.toFixed(2)}`,
       `Path: ${candidate.skill.path}`,
       "",
       content.trim(),
@@ -87,17 +88,16 @@ export function formatLoadedSkillsSummary(loaded: Array<{ candidate: SkillCandid
   const lines = [`Pre-loaded ${loaded.length} skill(s):`];
   for (const { candidate } of loaded) {
     const desc = compactDescription(candidate.skill.description, COMPACT_DESCRIPTION_LIMIT);
-    lines.push(`- ${candidate.skill.name} (${candidate.score.toFixed(2)}): ${desc}`);
+    lines.push(`- ${candidate.skill.name}${formatReasonBadgeSuffix(candidate.reason)} (${candidate.score.toFixed(2)}): ${desc}`);
   }
   return lines.join("\n");
 }
 
 export function formatCandidateDetail(candidate: SkillCandidate): string {
   return [
-    candidate.skill.name,
+    `${candidate.skill.name}${formatReasonBadgeSuffix(candidate.reason)}`,
     `Description: ${candidate.skill.description}`,
     `Score: ${candidate.score.toFixed(2)}`,
-    `Why: ${candidate.why}`,
     `Path: ${candidate.skill.path}`,
     `Load: shiori_load_skill({ skill: "${candidate.skill.name}" })`,
   ].join("\n");

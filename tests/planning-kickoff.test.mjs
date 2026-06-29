@@ -13,6 +13,7 @@ test("formatPlanningKickoffMessage returns dev-plan template without skill bodie
       skill: { name: "to-prd", description: "PRD", path: "/tmp/to-prd/SKILL.md", source: "/tmp" },
       score: 1,
       why: "matched",
+      reason: null,
     },
   ]);
   assert.match(message, /今日やる開発計画の型/);
