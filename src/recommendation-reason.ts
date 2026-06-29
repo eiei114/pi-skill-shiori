@@ -9,22 +9,15 @@ export const RECOMMENDATION_REASON_LABELS: Record<RecommendationReasonKind, stri
   "low-confidence": "low match",
 };
 
+export type RecommendationMatchSource = "trigger" | "description";
+
 export function classifyRecommendationReason(
-  candidate: Pick<SkillCandidate, "score" | "why">,
+  source: RecommendationMatchSource,
+  score: number,
   minScore: number,
-): RecommendationReasonKind | null {
-  if (candidate.why.startsWith('matched trigger "')) {
-    return "trigger";
-  }
-
-  if (candidate.why === "matched skill description") {
-    if (candidate.score < minScore + LOW_CONFIDENCE_MARGIN) {
-      return "low-confidence";
-    }
-    return "description";
-  }
-
-  return null;
+): RecommendationReasonKind {
+  if (source === "trigger") return "trigger";
+  return score < minScore + LOW_CONFIDENCE_MARGIN ? "low-confidence" : "description";
 }
 
 export function formatReasonBadge(reason: RecommendationReasonKind | null | undefined): string {
@@ -40,10 +33,11 @@ export function formatReasonBadgeSuffix(reason: RecommendationReasonKind | null 
 
 export function attachRecommendationReason(
   candidate: Omit<SkillCandidate, "reason">,
+  source: RecommendationMatchSource,
   minScore: number,
 ): SkillCandidate {
   return {
     ...candidate,
-    reason: classifyRecommendationReason(candidate, minScore),
+    reason: classifyRecommendationReason(source, candidate.score, minScore),
   };
 }

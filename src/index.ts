@@ -182,21 +182,16 @@ export default function piSkillShiori(pi: ExtensionAPI) {
           : [{ type: "text", text: "No matching skills for that task." }],
         details: {
           query: params.task,
-          matches: candidates.map((c) => c.skill.name),
-          badges: candidates.map((c) => formatReasonBadgeSuffix(c.reason).trim()).filter(Boolean),
+          matches: candidates.map((c) => `${c.skill.name}${formatReasonBadgeSuffix(c.reason)}`),
         },
       };
     },
     renderResult(result, { expanded }, theme) {
       const details = result.details as
-        | { query?: string; matches?: string[]; badges?: string[] }
+        | { query?: string; matches?: string[] }
         | undefined;
       const names = details?.matches?.join(", ") ?? "none";
-      const badgeText =
-        details?.badges && details.badges.length > 0
-          ? ` ${theme.fg("muted", details.badges.join(" "))}`
-          : "";
-      const collapsed = `${theme.fg("success", "✓ Shiori")} ${theme.bold(names)}${badgeText}`;
+      const collapsed = `${theme.fg("success", "✓ Shiori")} ${theme.bold(names)}`;
       if (!expanded) return new Text(collapsed, 0, 0);
       const query = details?.query ? `\n${theme.fg("dim", details.query)}` : "";
       return new Text(`${collapsed}${query}`, 0, 0);
@@ -383,7 +378,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       }
 
       const selected = candidates.find(
-        (candidate) => choice.startsWith(candidate.skill.name),
+        (candidate) => choice === `${candidate.skill.name}${formatReasonBadgeSuffix(candidate.reason)}`,
       );
       if (!selected) {
         return;

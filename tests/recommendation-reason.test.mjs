@@ -11,39 +11,20 @@ import {
 const minScore = 0.62;
 
 test("classifyRecommendationReason maps trigger matches to trigger", () => {
-  assert.equal(
-    classifyRecommendationReason(
-      { score: 0.95, why: 'matched trigger "auth"' },
-      minScore,
-    ),
-    "trigger",
-  );
+  assert.equal(classifyRecommendationReason("trigger", 0.95, minScore), "trigger");
 });
 
 test("classifyRecommendationReason maps strong description matches to description", () => {
   assert.equal(
-    classifyRecommendationReason(
-      { score: minScore + LOW_CONFIDENCE_MARGIN + 0.05, why: "matched skill description" },
-      minScore,
-    ),
+    classifyRecommendationReason("description", minScore + LOW_CONFIDENCE_MARGIN + 0.05, minScore),
     "description",
   );
 });
 
 test("classifyRecommendationReason maps near-threshold matches to low-confidence", () => {
   assert.equal(
-    classifyRecommendationReason(
-      { score: minScore + 0.01, why: "matched skill description" },
-      minScore,
-    ),
+    classifyRecommendationReason("description", minScore + 0.01, minScore),
     "low-confidence",
-  );
-});
-
-test("classifyRecommendationReason degrades gracefully for unknown reasons", () => {
-  assert.equal(
-    classifyRecommendationReason({ score: 0.5, why: "legacy reason text" }, minScore),
-    null,
   );
 });
 
@@ -66,6 +47,7 @@ test("attachRecommendationReason adds reason to candidates", () => {
       score: 0.95,
       why: 'matched trigger "auth"',
     },
+    "trigger",
     minScore,
   );
 

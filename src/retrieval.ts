@@ -58,6 +58,7 @@ function evaluateSkill(
         score: 0.95,
         why: `matched trigger "${matchedInclude}"`,
       },
+      "trigger",
       policy.candidateInjection.minScore,
     );
   }
@@ -72,6 +73,7 @@ function evaluateSkill(
       score: tokenScore,
       why: "matched skill description",
     },
+    "description",
     policy.candidateInjection.minScore,
   );
 }
