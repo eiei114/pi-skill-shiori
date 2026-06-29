@@ -12,3 +12,9 @@ test("buildRetrievalQueries keeps the original prompt", () => {
   const variants = buildRetrievalQueries("browser scraping screenshot");
   assert.ok(variants.includes("browser scraping screenshot"));
 });
+
+test("buildRetrievalQueries expands X API social data intent", () => {
+  const variants = buildRetrievalQueries("X API follower export");
+  assert.ok(variants.some((q) => q.includes("tweet search social media data")));
+  assert.ok(variants.some((q) => q.includes("twitter timeline follower export")));
+});
