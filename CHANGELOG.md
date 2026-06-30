@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## [0.6.1] - 2026-07-01
+
+### Changed
+
+- README aligned with Pi OSS minimal-docs policy: badges, required entrypoint sections, Quick start, Package contents, Links.
+- Detailed configuration and operational notes moved to `Docs/usage.md`.
+- README install examples and status text updated to match package version `0.6.1`.
+
 ## [0.6.0] - 2026-06-29
 
 ### Added
