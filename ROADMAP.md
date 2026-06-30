@@ -57,7 +57,7 @@ semver classification. Patches default to `patch`; `none` means no package publi
 
 | # | Slice | Bump | Status |
 |---|---|---|---|
-| 1 | Add README status badges (CI, Publish, npm version, npm downloads, License, Pi package, Trusted Publishing) | patch | planned |
+| 1 | Add README status badges (CI, Publish, npm version, npm downloads, License, Pi package, Trusted Publishing) | patch | done |
 | 2 | Add `version:check` CI gate (block publishable-path changes without a semver increase) | none | planned |
 | 3 | Pin GitHub Actions to commit SHAs in `ci.yml`, `auto-release.yml`, `publish.yml` | none | planned |
 

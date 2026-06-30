@@ -1,46 +1,40 @@
 # Pi Skill Shiori
 
-Pi Skill Shiori is a [Pi](https://pi.dev/) package that keeps large Agent Skill catalogs out of the model prompt and lets the agent load only the skills that match the current task.
+[![CI](https://github.com/eiei114/pi-skill-shiori/actions/workflows/ci.yml/badge.svg)](https://github.com/eiei114/pi-skill-shiori/actions/workflows/ci.yml)
+[![Publish](https://github.com/eiei114/pi-skill-shiori/actions/workflows/publish.yml/badge.svg)](https://github.com/eiei114/pi-skill-shiori/actions/workflows/publish.yml)
+[![npm version](https://img.shields.io/npm/v/pi-skill-shiori)](https://www.npmjs.com/package/pi-skill-shiori)
+[![npm downloads](https://img.shields.io/npm/dw/pi-skill-shiori)](https://www.npmjs.com/package/pi-skill-shiori)
+[![License: MIT](https://img.shields.io/github/license/eiei114/pi-skill-shiori)](https://github.com/eiei114/pi-skill-shiori/blob/main/LICENSE)
+![Pi Package](https://img.shields.io/badge/Pi-Package-blue)
+[![Trusted Publishing](https://img.shields.io/badge/npm-provenance-yellow)](https://docs.npmjs.com/generating-provenance-statements)
 
-It is built for vaults or projects with many Agent Skills where the default catalog becomes noisy and expensive.
+> Pi extension that keeps large Agent Skill catalogs out of the model prompt and loads only the skills that match the current task.
 
 For maintenance priorities and the phased plan, see [`ROADMAP.md`](ROADMAP.md).
 
-## What it does
+## What this is
 
-- **Zero-Catalog Mode**: hides the normal skill catalog when Pi exposes one in the system prompt.
-- **Policy-based retrieval**: treats skills as explicit by default and only candidates skills marked as triggerable.
-- **Compact candidate injection**: injects short skill suggestions instead of full `SKILL.md` files.
-- **On-demand loading**: exposes `shiori_load_skill` so the model can load one selected skill body when needed.
-- **Vault-wide skill inventory**: indexes skills from project and user-global roots, with optional extra roots in policy.
-- **SQLite FTS retrieval**: indexes skill names, descriptions, and policy triggers with `node:sqlite` + FTS5, with token-match fallback.
-- **Compact UI output**: keeps skill-load logs short while still passing full skill text to the model.
+Pi Skill Shiori is a [Pi](https://pi.dev/) package for vaults or projects with many Agent Skills where the default catalog becomes noisy and expensive. It hides the normal skill catalog when safe, recommends triggerable skills with compact summaries, and loads full `SKILL.md` bodies on demand.
 
-## Status
+`0.6.1` is an early working release. Prompt-boundary suppression is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
 
-`0.5.0` is an early working release. It is useful for local Pi workflows, but the prompt-boundary suppression logic is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
+## Features
 
-## Requirements
-
-- Pi Coding Agent with package support
-- Node.js `>=22.5`
-- `npm`
-
-Pi core packages are peer dependencies and should be supplied by the Pi runtime:
-
-- `@earendil-works/pi-ai`
-- `@earendil-works/pi-coding-agent`
-- `@earendil-works/pi-tui`
-- `typebox`
+- **Zero-Catalog Mode** — hides the normal skill catalog when Pi exposes one in the system prompt.
+- **Policy-based retrieval** — treats skills as explicit by default and only candidates skills marked as triggerable.
+- **Compact candidate injection** — injects short skill suggestions instead of full `SKILL.md` files.
+- **On-demand loading** — exposes `shiori_load_skill` so the model can load one selected skill body when needed.
+- **Vault-wide skill inventory** — indexes skills from project and user-global roots, with optional extra roots in policy.
+- **SQLite FTS retrieval** — indexes skill names, descriptions, and policy triggers with `node:sqlite` + FTS5, with token-match fallback.
+- **Recommendation reason badges** — compact `[trigger]`, `[description]`, and `[low match]` labels on surfaced skills.
+- **Session-local feedback metrics** — `/shiori:stats` tracks offers, loads, and follow-through without storing prompts.
 
 ## Install
 
 ### Global install from npm
 
-After the package is published to npm:
-
 ```bash
-pi install npm:pi-skill-shiori@0.5.0
+pi install npm:pi-skill-shiori@0.6.1
 ```
 
 Without a version pin:
@@ -51,10 +45,8 @@ pi install npm:pi-skill-shiori
 
 ### Project-local install from npm
 
-Use `-l` to write the package to the current project’s `.pi/settings.json`:
-
 ```bash
-pi install -l npm:pi-skill-shiori@0.5.0
+pi install -l npm:pi-skill-shiori@0.6.1
 ```
 
 Without a version pin:
@@ -63,47 +55,10 @@ Without a version pin:
 pi install -l npm:pi-skill-shiori
 ```
 
-Equivalent pinned manual `.pi/settings.json` entry:
-
-```json
-{
-  "packages": [
-    "npm:pi-skill-shiori@0.5.0"
-  ]
-}
-```
-
-Equivalent unpinned manual `.pi/settings.json` entry:
-
-```json
-{
-  "packages": [
-    "npm:pi-skill-shiori"
-  ]
-}
-```
-
-### Global install from GitHub
+### Install from GitHub
 
 ```bash
-pi install git:github.com/eiei114/pi-skill-shiori@v0.5.0
-```
-
-Without a tag pin:
-
-```bash
-pi install git:github.com/eiei114/pi-skill-shiori
-```
-
-### Project-local install from GitHub
-
-```bash
-pi install -l git:github.com/eiei114/pi-skill-shiori@v0.5.0
-```
-
-Without a tag pin:
-
-```bash
+pi install git:github.com/eiei114/pi-skill-shiori@v0.6.1
 pi install -l git:github.com/eiei114/pi-skill-shiori
 ```
 
@@ -116,114 +71,29 @@ pi -e git:github.com/eiei114/pi-skill-shiori
 
 ### Local development install
 
-From a project that should use your checkout:
-
 ```bash
 pi install -l /absolute/path/to/pi-skill-shiori
 ```
 
-Or add a relative local path to `.pi/settings.json`:
+## Quick start
 
-```json
-{
-  "packages": [
-    "../../OSS/pi-skill-shiori"
-  ]
-}
-```
+1. Install the package (see [Install](#install)).
+2. Create `.pi/skill-shiori.yml` in your Pi project (see [Docs/usage.md](Docs/usage.md#configure)).
+3. Start Pi and run `/shiori:doctor` to confirm policy path, indexed roots, and suppression status.
+4. Use `/shiori:bootstrap` to draft a policy from discovered skills, then `/shiori:reload` after edits.
+5. Ask the agent for help; Shiori injects compact candidates or use `/shiori:recommend` for an interactive flow.
 
-> Note: policy/index changes can be refreshed with `/shiori:reload`, and Shiori auto-refreshes the vault-wide inventory when skill files change under indexed roots. Extension code changes still require restarting the Pi process because Node keeps imported extension modules cached.
+Commands take no inline arguments. Details are collected after launch via Pi UI prompts.
 
-## Vault-wide skill inventory
-
-Shiori builds a searchable inventory from these roots (in discovery order; first match wins on duplicate skill names):
-
-| Root | Scope |
-|---|---|
-| `<cwd>/.pi/skills` | Project-local Pi skills |
-| `<cwd>/.agents/skills` | Project-local Agent skills |
-| `~/.pi/agent/skills` | User-global Pi agent skills |
-| `inventory.roots` entries | Optional extra roots (relative to `<cwd>` or absolute) |
-
-Refresh behavior:
-
-- **Session start** builds the initial inventory and SQLite FTS index.
-- **Auto-refresh** (default) rescans roots before retrieval when any `SKILL.md` path changes. This is a directory walk only; it rebuilds the FTS index when the fingerprint changes.
-- **Manual refresh** via `/shiori:reload` always rebuilds the inventory and FTS index immediately.
-- Disable auto-refresh when you prefer a fixed snapshot:
-
-```yaml
-inventory:
-  autoRefreshOnChange: false
-  roots:
-    - custom-skills
-```
-
-Cost/latency trade-offs:
-
-- Auto-refresh adds a shallow filesystem walk on each agent turn while enabled. It avoids stale search results after local skill edits without restarting Pi.
-- A full refresh rebuilds the SQLite FTS database and scales with total indexed skills and description length. Large vaults with many roots may prefer `autoRefreshOnChange: false` plus explicit `/shiori:reload` after bulk imports.
-- Search stays description-first and policy-aware: only `triggerable` skills become candidates, with FTS ranking over names, descriptions, and policy triggers.
-
-## Configure
-
-Create `.pi/skill-shiori.yml` in the project where Pi runs.
-
-Minimal config:
-
-```yaml
-zeroCatalog:
-  enabled: true
-
-defaults:
-  activation: explicit
-
-candidateInjection:
-  maxCandidates: 3
-  minScore: 0.62
-
-alwaysVisible:
-  - pi-skill-shiori
-
-skills:
-  reddit-research:
-    activation: triggerable
-    triggers:
-      include:
-        - Reddit
-        - Redditで調べて
-        - reputation on Reddit
-      exclude: []
-```
-
-Policy rules:
-
-- `defaults.activation: explicit` is the safe default. Unlisted skills are not auto-candidates.
-- `activation: triggerable` allows Shiori to recommend the skill for matching requests.
-- `alwaysVisible` lists skills that should remain visible in the Skill Catalog during Zero-Catalog Mode. Use this for a tiny safety-critical allowlist instead of broad trigger rules.
-- Missing `alwaysVisible` entries are reported by `/shiori:doctor` and warned once per session when Zero-Catalog Mode runs.
-- `candidateInjection.maxCandidates` limits how many suggestions enter the prompt.
-- `candidateInjection.minScore` drops weak matches.
-
-Generate a starter policy from discovered skills:
-
-```text
-/shiori:bootstrap
-```
-
-This writes a generated review file next to `.pi/skill-shiori.yml`. Review it before using it as your real policy.
-
-## Commands
+## Usage summary
 
 | Command | Purpose |
 |---|---|
 | `/shiori:doctor` | Show policy path, indexed roots, inventory count, retrieval backend, suppression status, and code marker. |
 | `/shiori:bootstrap` | Generate a review draft policy from discovered skill descriptions. |
-| `/shiori:reload` | Ask what to reload, then rebuild Shiori’s skill inventory and optionally ask Pi to reload runtime resources. Code changes may still need full restart. |
-| `/shiori:recommend` | Ask what you need help with, then either pre-load matches and queue the task for the agent or review recommendations only. Planning phrases (e.g. `計画を立てたい`) return the dev-plan intake template without dumping SKILL bodies. |
-| `/shiori:stats` | Show operational counters and a compact recommendation quality summary. |
-
-## Tool
+| `/shiori:reload` | Rebuild Shiori skill inventory; optionally ask Pi to reload runtime resources. |
+| `/shiori:recommend` | Interactive recommendation flow with optional pre-load. |
+| `/shiori:stats` | Show operational counters and recommendation quality summary. |
 
 Shiori registers one tool:
 
@@ -231,94 +101,22 @@ Shiori registers one tool:
 shiori_load_skill({ skill: "reddit-research" })
 ```
 
-The model receives the full selected `SKILL.md` content. The Pi UI shows a compact result like:
+The model receives the full selected `SKILL.md` content. The Pi UI shows a compact result like `✓ Loaded reddit-research (6.3KB)`.
 
-```text
-✓ Loaded reddit-research (6.3KB)
-```
+Recommended skills show compact reason badges (`[trigger]`, `[description]`, `[low match]`). See [`Docs/recommendation-surface.md`](Docs/recommendation-surface.md) for badge vocabulary and metrics interplay.
 
-## Suppression statuses
+For inventory roots, policy YAML, suppression statuses, and feedback metrics, see [`Docs/usage.md`](Docs/usage.md).
 
-`/shiori:doctor` reports the last suppression result:
+## Package contents
 
-| Status | Meaning |
+| Path | Purpose |
 |---|---|
-| `disabled` | `zeroCatalog.enabled` is false. |
-| `not-needed` | No normal Skill Catalog marker was present in that turn’s prompt, so nothing needed deletion. |
-| `suppressed` | Shiori recognized and removed the normal Skill Catalog for that turn. |
-| `failed-pattern-not-found` | A catalog-like marker existed, but Shiori could not safely identify its boundary. Prompt left unchanged. |
-
-`not-needed` is not an error. It often means Pi or another configuration already avoided injecting the normal catalog.
-
-## Retrieval backend
-
-Shiori prefers `sqlite-fts` using Node’s built-in `node:sqlite` and FTS5. If that is unavailable, it falls back to `token-match`.
-
-Check backend:
-
-```text
-/shiori:doctor
-```
-
-Example:
-
-```text
-retrievalBackend: sqlite-fts
-code: prompt-boundary-v3
-```
-
-## Recommendation reason badges
-
-Recommended skills show compact reason badges so you can see why Shiori surfaced them:
-
-- `[trigger]` — a policy trigger phrase matched
-- `[description]` — skill name/description tokens matched strongly
-- `[low match]` — passed `minScore` but near the threshold
-
-Badges appear in auto-inject candidates, `/shiori:recommend` review mode, pre-load summaries, and the `shiori_recommend` tool line. Unclassified matches omit the badge instead of showing a long explanation.
-
-Example with multiple surfaced skills:
-
-```text
-Matched 2 skill(s): playwright-cli [trigger], gstack-browse [description]
-```
-
-See [`Docs/recommendation-surface.md`](Docs/recommendation-surface.md) for how badges relate to Always Visible Skill policy and recommendation feedback metrics.
-
-## Recommendation feedback metrics
-
-`/shiori:stats` includes session-local recommendation feedback so operators can tune trigger rules from real outcomes instead of guesswork.
-
-Recorded (bounded, in-memory for the current Pi session):
-
-- recommendation offers and candidate slot counts per source (`auto-inject`, `command`, `tool`)
-- load follow-through when recommended skills are pre-loaded or later loaded via `shiori_load_skill`
-- abandoned recommendation flows (candidates shown but not loaded, e.g. review-only mode)
-- zero-candidate queries (obvious misses)
-- per-skill offered/loaded tallies (up to 50 skill names, oldest entries dropped first)
-
-Not recorded:
-
-- user prompts, task descriptions, or transcript bodies
-- skill `SKILL.md` contents
-- filesystem paths beyond skill names already visible in policy/inventory
-
-Retention boundary:
-
-- counters reset when the Pi session ends
-- no disk persistence or cross-session analytics in this slice
-- inspect the compact summary at the top of `/shiori:stats`, with full JSON below
-
-Example summary line:
-
-```text
-Recommendation feedback (session-local, no prompts stored)
-offers: 4 | candidate slots: 7 | loaded: 3
-abandoned: 1 | zero-candidate queries: 2 | follow-through: 42.9%
-auto-inject: offers=2, loaded=1, zeroHits=1
-command: offers=1, loaded=2, zeroHits=1
-top skills: auth-helper(1/2), deploy-kit(1/1)
-```
+| `src/` | Pi extension entrypoint and Shiori runtime |
+| `Docs/usage.md` | Configuration, inventory, suppression, and metrics details |
+| `Docs/recommendation-surface.md` | Recommendation badges and surface behavior |
+| `ROADMAP.md` | Maintenance direction and phased plan |
+| `CHANGELOG.md` | Version history |
+| `SECURITY.md` | Vulnerability reporting |
 
 ## Development
 
@@ -327,6 +125,7 @@ git clone https://github.com/eiei114/pi-skill-shiori.git
 cd pi-skill-shiori
 npm install
 npm run typecheck
+npm test
 ```
 
 Run in a Pi project without installing globally:
@@ -335,58 +134,39 @@ Run in a Pi project without installing globally:
 pi -e /absolute/path/to/pi-skill-shiori
 ```
 
-Recommended release checks:
+## Release
 
-```bash
-npm run typecheck
-npm test
-```
+Releases are automated via Trusted Publishing:
 
+1. Bump `version` in `package.json` and update `CHANGELOG.md`.
+2. Merge to `main`.
+3. **Auto Release** tags `v<version>` and creates a GitHub release.
+4. The tag triggers **Publish**, which publishes to npm with provenance.
 
-## Publish to npm
-
-Release checklist for npm:
+Maintainer checks before merge:
 
 ```bash
 npm run typecheck
 npm test
 npm run release:npm:dry
-npm whoami
-npm run release:npm
 ```
 
 For version history, see [`CHANGELOG.md`](CHANGELOG.md).
-
-For a first-time publish, login first:
-
-```bash
-npm login
-```
-
-After publishing, verify the Pi install path:
-
-```bash
-pi install npm:pi-skill-shiori@0.5.0
-pi install npm:pi-skill-shiori
-pi list
-/shiori:doctor
-```
-
-For future versions:
-
-```bash
-npm version patch
-git push --follow-tags
-npm run release:npm
-```
 
 ## Security
 
 Pi packages execute local code with the same permissions as Pi. Review third-party packages before installing them.
 
-Shiori itself does not sandbox skills. It only changes how skill candidates are discovered and loaded. A loaded skill can still instruct the model to run tools, edit files, or execute commands according to your Pi/tool permissions.
+Shiori does not sandbox skills. It only changes how skill candidates are discovered and loaded. A loaded skill can still instruct the model to run tools, edit files, or execute commands according to your Pi/tool permissions.
 
 For vulnerability reporting, see [`SECURITY.md`](SECURITY.md).
+
+## Links
+
+- **Repository**: <https://github.com/eiei114/pi-skill-shiori>
+- **npm**: <https://www.npmjs.com/package/pi-skill-shiori>
+- **Issues**: <https://github.com/eiei114/pi-skill-shiori/issues>
+- **Pi packages**: <https://pi.dev/packages>
 
 ## License
 
