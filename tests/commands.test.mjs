@@ -66,7 +66,7 @@ test("shiori:recommend review mode is selected through UI instead of --pick args
   try {
     const ctx = makeCommandContext(cwd, {
       inputs: ["auth login"],
-      selects: [RECOMMEND_REVIEW_ONLY, "auth-helper [description]"],
+      selects: [RECOMMEND_REVIEW_ONLY, "auth-helper [trigger]"],
       confirms: [false],
     });
 

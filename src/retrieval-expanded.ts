@@ -18,13 +18,22 @@ export function retrieveCandidatesExpanded(
   for (const variant of buildRetrievalQueries(query)) {
     for (const candidate of retrieveCandidates(variant, skills, policy, index)) {
       const previous = byName.get(candidate.skill.name);
-      if (!previous || candidate.score > previous.score) {
-        byName.set(candidate.skill.name, candidate);
-      }
+      byName.set(candidate.skill.name, preferExpandedCandidate(previous, candidate));
     }
   }
 
   return [...byName.values()]
     .sort((a, b) => b.score - a.score || a.skill.name.localeCompare(b.skill.name))
     .slice(0, max);
+}
+
+/** Keep trigger badges when expanded query variants also score the description higher. */
+function preferExpandedCandidate(
+  previous: SkillCandidate | undefined,
+  candidate: SkillCandidate,
+): SkillCandidate {
+  if (!previous) return candidate;
+  if (previous.reason === "trigger") return previous;
+  if (candidate.reason === "trigger") return candidate;
+  return candidate.score > previous.score ? candidate : previous;
 }
