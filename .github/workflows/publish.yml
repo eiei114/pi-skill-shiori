@@ -4,11 +4,6 @@ on:
   push:
     tags:
       - 'v*.*.*'
-  release:
-    types: [published]
-  workflow_run:
-    workflows: ['Auto Release']
-    types: [completed]
   workflow_dispatch:
     inputs:
       ref:
@@ -28,13 +23,12 @@ jobs:
   publish:
     name: Publish package
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.ref || github.event.workflow_run.head_sha || github.ref }}
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
