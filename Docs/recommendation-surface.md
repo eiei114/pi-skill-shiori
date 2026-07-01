@@ -60,3 +60,18 @@ Always-visible skills may still appear as recommendations when they match a task
 `/shiori:stats` recommendation feedback records offers, loads, and follow-through by source (`auto-inject`, `command`, `tool`). Metrics do **not** store reason badges or per-reason tallies.
 
 Use badges to understand individual suggestions during a session. Use metrics to see whether recommendations are being loaded after they are offered.
+
+## Dogfood review (0.6.2)
+
+Reviewed the badge rollout across `/shiori:recommend` review mode, auto-inject candidate blocks, and `shiori_recommend` collapsed output using realistic skill policies and natural-language tasks (`browser scraping screenshot`, `auth login`, `vault search markdown`).
+
+### Findings
+
+- **Trust:** Compact badges clarify *why* a skill surfaced when they match the retrieval path. Users can distinguish policy trigger hits from description token matches without reading long `Why:` lines.
+- **Noise:** The three-label vocabulary stays short enough for picker labels and tool summaries. No extra badge is shown when retrieval cannot classify a match.
+- **Friction fixed:** Expanded retrieval (`buildRetrievalQueries`) evaluates per-token variants. A description-only variant could outscore a trigger match and incorrectly replace `[trigger]` with `[description]`. Merge logic now keeps trigger classification when any variant fired a policy trigger.
+- **Deferred:** Broader recommendation-model changes (new badge types, per-reason metrics, confidence scores in default surfaces) stay out of scope.
+
+### Recommendation
+
+Keep reason badges on the default recommendation surfaces. Treat `[trigger]` as the authoritative label whenever policy triggers matched, even if expanded queries also score the description highly.

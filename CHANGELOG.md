@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
 
+## [0.6.2] - 2026-07-02
+
+### Fixed
+
+- Expanded retrieval (`retrieveCandidatesExpanded`) now preserves `[trigger]` badges when query variants also score the skill higher via description tokens.
+
+### Changed
+
+- `Docs/recommendation-surface.md` documents the dogfood review outcome and recommendation to keep badges on default surfaces.
+
 ## [0.6.1] - 2026-07-01
 
 ### Changed

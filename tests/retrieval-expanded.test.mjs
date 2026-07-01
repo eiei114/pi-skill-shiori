@@ -7,7 +7,16 @@ const policy = {
   defaults: { activation: "explicit" },
   candidateInjection: { maxCandidates: 3, minScore: 0.62 },
   alwaysVisible: ["pi-skill-shiori"],
-  skills: {},
+  skills: {
+    "playwright-cli": {
+      activation: "triggerable",
+      triggers: { include: ["browser", "screenshot"], exclude: [] },
+    },
+    "auth-helper": {
+      activation: "triggerable",
+      triggers: { include: ["auth"], exclude: [] },
+    },
+  },
 };
 
 const skills = [
@@ -29,11 +38,26 @@ const skills = [
     path: "/tmp/x-twitter-scraper/SKILL.md",
     source: "/tmp/.pi/skills",
   },
+  {
+    name: "auth-helper",
+    description: "Helps with auth login flows",
+    path: "/tmp/auth-helper/SKILL.md",
+    source: "/tmp/.pi/skills",
+  },
 ];
 
 test("retrieveCandidatesExpanded finds browser skills from natural language", () => {
   const hits = retrieveCandidatesExpanded("browser scraping screenshot", skills, policy);
-  assert.ok(hits.some((candidate) => candidate.skill.name === "playwright-cli"));
+  const playwright = hits.find((candidate) => candidate.skill.name === "playwright-cli");
+  assert.ok(playwright);
+  assert.equal(playwright?.reason, "trigger");
+});
+
+test("retrieveCandidatesExpanded keeps trigger badges when expanded variants score higher on description", () => {
+  const hits = retrieveCandidatesExpanded("auth login", skills, policy);
+  const auth = hits.find((candidate) => candidate.skill.name === "auth-helper");
+  assert.ok(auth);
+  assert.equal(auth?.reason, "trigger");
 });
 
 test("retrieveCandidatesExpanded expands Japanese auth queries", () => {
