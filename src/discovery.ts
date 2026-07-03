@@ -85,6 +85,15 @@ async function walk(dir: string, result: string[]): Promise<void> {
     const fullPath = join(dir, entry.name);
     if (entry.isDirectory()) {
       await walk(fullPath, result);
+    } else if (entry.isSymbolicLink()) {
+      try {
+        const target = await stat(fullPath);
+        if (target.isDirectory()) {
+          await walk(fullPath, result);
+        }
+      } catch {
+        // Ignore broken symlinks.
+      }
     } else if (entry.isFile() && entry.name === SKILL_FILE) {
       result.push(fullPath);
     }

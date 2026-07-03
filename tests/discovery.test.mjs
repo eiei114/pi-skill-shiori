@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -28,4 +28,29 @@ description: |
   assert.ok(skill);
   assert.match(skill.description, /browser scraping/);
   assert.notEqual(skill.description, "|");
+});
+
+test("discoverSkills resolves skills through symlinked directories", async () => {
+  const root = await mkdtemp(join(tmpdir(), "shiori-symlink-"));
+  const targetsDir = join(root, ".agents", "skills");
+  await mkdir(targetsDir, { recursive: true });
+
+  // Create actual skill directory outside the vault root
+  const realDir = join(root, "external", "symlinked-skill");
+  await mkdir(realDir, { recursive: true });
+  await writeFile(
+    join(realDir, "SKILL.md"),
+    '---\nname: symlinked-skill\ndescription: Found via symlink\n---\n# Symlinked\n',
+    "utf8",
+  );
+
+  // Create a symlink inside .agents/skills pointing to the external directory
+  await symlink(realDir, join(targetsDir, "symlinked-skill"));
+
+  const skills = await discoverSkills(root);
+  const found = skills.find((record) => record.name === "symlinked-skill");
+
+  assert.ok(found, "Skill under a symlinked directory should be discovered");
+  assert.match(found.description, /symlink/i);
+  assert.equal(found.source, join(root, ".agents", "skills"));
 });
