@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
@@ -75,16 +75,34 @@ async function findSkillFiles(root: string): Promise<string[]> {
   }
 
   const result: string[] = [];
-  await walk(root, result);
+  await walk(root, result, new Set<string>());
   return result;
 }
 
-async function walk(dir: string, result: string[]): Promise<void> {
+async function walk(dir: string, result: string[], visited: Set<string>): Promise<void> {
+  let canonicalDir: string;
+  try {
+    canonicalDir = await realpath(dir);
+  } catch {
+    return;
+  }
+  if (visited.has(canonicalDir)) return;
+  visited.add(canonicalDir);
+
   const entries = await readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = join(dir, entry.name);
     if (entry.isDirectory()) {
-      await walk(fullPath, result);
+      await walk(fullPath, result, visited);
+    } else if (entry.isSymbolicLink()) {
+      try {
+        const target = await stat(fullPath);
+        if (target.isDirectory()) {
+          await walk(fullPath, result, visited);
+        }
+      } catch {
+        // Ignore broken symlinks.
+      }
     } else if (entry.isFile() && entry.name === SKILL_FILE) {
       result.push(fullPath);
     }
