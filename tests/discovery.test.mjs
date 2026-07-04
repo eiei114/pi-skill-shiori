@@ -54,3 +54,23 @@ test("discoverSkills resolves skills through symlinked directories", async () =>
   assert.match(found.description, /symlink/i);
   assert.equal(found.source, join(root, ".agents", "skills"));
 });
+
+test("discoverSkills skips recursive symlink cycles", async () => {
+  const root = await mkdtemp(join(tmpdir(), "shiori-symlink-cycle-"));
+  const skillsRoot = join(root, ".pi", "skills");
+  const skillDir = join(skillsRoot, "cycle-safe");
+  await mkdir(skillDir, { recursive: true });
+  await writeFile(
+    join(skillDir, "SKILL.md"),
+    '---\nname: cycle-safe\ndescription: Cycle guard fixture\n---\n# Cycle Safe\n',
+    "utf8",
+  );
+
+  await symlink(skillsRoot, join(skillDir, "loop"));
+
+  const skills = await discoverSkills(root);
+  const matches = skills.filter((record) => record.name === "cycle-safe");
+
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0]?.path, join(skillDir, "SKILL.md"));
+});
