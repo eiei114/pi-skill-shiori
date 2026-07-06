@@ -53,6 +53,14 @@ export async function loadPolicyWithSource(cwd: string, options: PolicyLoadOptio
   return { policy: DEFAULT_POLICY, source: "default" };
 }
 
+export function loadedPolicySignature(loaded: LoadedPolicy): string {
+  return JSON.stringify({
+    source: loaded.source,
+    path: loaded.path ?? null,
+    policy: loaded.policy,
+  });
+}
+
 async function readPolicyIfPresent(path: string): Promise<ShioriPolicy | undefined> {
   try {
     const raw = await readFile(path, "utf8");
