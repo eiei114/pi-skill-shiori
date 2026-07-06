@@ -57,6 +57,34 @@ test("shiori:doctor reports the effective policy source", async () => {
   }
 });
 
+test("shiori:doctor reloads when policy source changes mid-session", async () => {
+  const cwd = await makeSkillProject({ withPolicy: false });
+  const home = await mkdtemp(join(tmpdir(), "shiori-home-test-"));
+  const previousHome = process.env.HOME;
+  const previousUserProfile = process.env.USERPROFILE;
+  process.env.HOME = home;
+  process.env.USERPROFILE = home;
+
+  const { commands, events } = registerExtension();
+  try {
+    await events.get("session_start")({}, { cwd });
+    await mkdir(join(home, ".pi", "agent"), { recursive: true });
+    await writeFile(join(home, ".pi", "agent", "skill-shiori.yml"), "zeroCatalog:\n  enabled: true\n", "utf8");
+
+    const ctx = makeCommandContext(cwd);
+    await commands.get("shiori:doctor").handler("", ctx);
+
+    const message = ctx.notifications.at(-1).message;
+    assert.match(message, /policySource: global/);
+    assert.match(message, /zeroCatalog: enabled/);
+  } finally {
+    process.env.HOME = previousHome;
+    process.env.USERPROFILE = previousUserProfile;
+    await cleanup(cwd, events);
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
 test("shiori:recommend reads query from UI input and queues the recommendation flow", async () => {
   const cwd = await makeSkillProject();
   const { commands, events, sentUserMessages } = registerExtension();
@@ -155,7 +183,7 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function makeSkillProject() {
+async function makeSkillProject({ withPolicy = true } = {}) {
   const cwd = await mkdtemp(join(tmpdir(), "shiori-command-test-"));
   const skillDir = join(cwd, ".pi", "skills", "auth-helper");
   await mkdir(skillDir, { recursive: true });
@@ -172,23 +200,25 @@ async function makeSkillProject() {
     ].join("\n"),
     "utf8",
   );
-  await writeFile(
-    join(cwd, ".pi", "skill-shiori.yml"),
-    [
-      "defaults:",
-      "  activation: explicit",
-      "candidateInjection:",
-      "  maxCandidates: 3",
-      "  minScore: 0.5",
-      "skills:",
-      "  auth-helper:",
-      "    activation: triggerable",
-      "    triggers:",
-      "      include:",
-      "        - auth",
-      "",
-    ].join("\n"),
-    "utf8",
-  );
+  if (withPolicy) {
+    await writeFile(
+      join(cwd, ".pi", "skill-shiori.yml"),
+      [
+        "defaults:",
+        "  activation: explicit",
+        "candidateInjection:",
+        "  maxCandidates: 3",
+        "  minScore: 0.5",
+        "skills:",
+        "  auth-helper:",
+        "    activation: triggerable",
+        "    triggers:",
+        "      include:",
+        "        - auth",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+  }
   return cwd;
 }

@@ -4,6 +4,13 @@
 
 - Add Buy Me a Coffee sponsor button to README and native GitHub funding link via `.github/FUNDING.yml`.
 
+## [0.6.4] - 2026-07-07
+
+### Fixed
+
+- Rebuild the Shiori inventory when the effective policy source or policy contents change mid-session, so `/shiori:doctor` and runtime behavior stay aligned after adding or updating a global policy file.
+- Add a regression test covering a global policy file appearing after session start.
+
 All notable changes to this project will be documented in this file.
 
 This project follows semantic versioning.
@@ -125,4 +132,3 @@ This project follows semantic versioning.
 
 - Initial Pi Skill Shiori release.
 - Zero-Catalog mode, policy-based retrieval, SQLite FTS indexing, and on-demand `shiori_load_skill` tool.
-

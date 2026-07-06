@@ -9,7 +9,7 @@ import { loadRecommendedSkills } from "./load-skills.js";
 import { formatPlanningKickoffMessage, isPlanningIntent } from "./planning-kickoff.js";
 import { createStats } from "./metrics.js";
 import { createRecommendationFeedback } from "./recommendation-feedback.js";
-import { getPolicyPath, loadPolicyWithSource, type LoadedPolicy } from "./policy.js";
+import { getPolicyPath, loadPolicyWithSource, loadedPolicySignature, type LoadedPolicy } from "./policy.js";
 import {
   formatCandidateDetail,
   formatCandidateInjection,
@@ -45,8 +45,8 @@ export default function piSkillShiori(pi: ExtensionAPI) {
   const stats = createStats();
   const recommendationFeedback = createRecommendationFeedback();
 
-  async function reload(cwd: string): Promise<SkillIndex> {
-    const currentPolicy = await loadPolicyWithSource(cwd);
+  async function reload(cwd: string, currentPolicy?: LoadedPolicy): Promise<SkillIndex> {
+    currentPolicy ??= await loadPolicyWithSource(cwd);
     const policy = currentPolicy.policy;
     const inventory = await refreshSkillInventory(cwd, policy, index);
     index = inventory.index;
@@ -68,6 +68,11 @@ export default function piSkillShiori(pi: ExtensionAPI) {
     }
 
     const currentPolicy = await loadPolicyWithSource(cwd);
+    if (!loadedPolicy || loadedPolicySignature(currentPolicy) !== loadedPolicySignature(loadedPolicy)) {
+      stats.inventoryAutoRefreshCount += 1;
+      return reload(cwd, currentPolicy);
+    }
+
     const policy = currentPolicy.policy;
     loadedPolicy = currentPolicy;
     if (!isAutoRefreshEnabled(policy)) {
@@ -76,7 +81,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
 
     if (await isInventoryStale(cwd, policy, inventoryFingerprint)) {
       stats.inventoryAutoRefreshCount += 1;
-      return reload(cwd);
+      return reload(cwd, currentPolicy);
     }
 
     return index;
