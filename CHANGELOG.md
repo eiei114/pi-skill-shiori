@@ -4,6 +4,13 @@
 
 - Add Buy Me a Coffee sponsor button to README and native GitHub funding link via `.github/FUNDING.yml`.
 
+## [0.6.6] - 2026-07-07
+
+### Fixed
+
+- Stopped duplicate npm publish attempts caused by `publish.yml` running once on `main` push and again from the tag-dispatch path in auto-release.
+- Kept the auto-release → tag-specific `workflow_dispatch` publish path while removing the redundant `main`/release-triggered publish path.
+
 ## [0.6.5] - 2026-07-07
 
 ### Fixed
