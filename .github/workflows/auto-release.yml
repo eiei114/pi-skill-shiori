@@ -47,3 +47,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Dispatch publish workflow for new tag
+        if: steps.check.outputs.released == 'true'
+        run: |
+          TAG="${{ steps.check.outputs.tag }}"
+          gh workflow run publish.yml --ref main -f ref="$TAG"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
