@@ -9,7 +9,7 @@ import { loadRecommendedSkills } from "./load-skills.js";
 import { formatPlanningKickoffMessage, isPlanningIntent } from "./planning-kickoff.js";
 import { createStats } from "./metrics.js";
 import { createRecommendationFeedback } from "./recommendation-feedback.js";
-import { getPolicyPath, loadPolicy } from "./policy.js";
+import { getPolicyPath, loadPolicyWithSource, type LoadedPolicy } from "./policy.js";
 import {
   formatCandidateDetail,
   formatCandidateInjection,
@@ -40,16 +40,19 @@ export default function piSkillShiori(pi: ExtensionAPI) {
   let index: SkillIndex | undefined;
   let inventoryFingerprint: string | undefined;
   let inventoryRoots: string[] = [];
+  let loadedPolicy: LoadedPolicy | undefined;
   let warnedAlwaysVisibleMissing = new Set<string>();
   const stats = createStats();
   const recommendationFeedback = createRecommendationFeedback();
 
   async function reload(cwd: string): Promise<SkillIndex> {
-    const policy = await loadPolicy(cwd);
+    const currentPolicy = await loadPolicyWithSource(cwd);
+    const policy = currentPolicy.policy;
     const inventory = await refreshSkillInventory(cwd, policy, index);
     index = inventory.index;
     inventoryFingerprint = inventory.fingerprint;
     inventoryRoots = inventory.roots;
+    loadedPolicy = currentPolicy;
     stats.inventoryCount = index.skills.length;
     stats.duplicateCount = findDuplicates(index.skills).size;
     stats.lastReloadAt = index.builtAt;
@@ -64,7 +67,9 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       return reload(cwd);
     }
 
-    const policy = await loadPolicy(cwd);
+    const currentPolicy = await loadPolicyWithSource(cwd);
+    const policy = currentPolicy.policy;
+    loadedPolicy = currentPolicy;
     if (!isAutoRefreshEnabled(policy)) {
       return index;
     }
@@ -96,6 +101,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
     index = undefined;
     inventoryFingerprint = undefined;
     inventoryRoots = [];
+    loadedPolicy = undefined;
   });
 
   pi.on("input", async (event) => {
@@ -248,7 +254,9 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       const alwaysVisible = evaluateAlwaysVisible(current.policy.alwaysVisible, current.skills);
       const doctorLines = [
         "Pi Skill Shiori doctor",
-        `policy: ${getPolicyPath(ctx.cwd)}`,
+        `policy: ${loadedPolicy?.path ?? "default"}`,
+        `policySource: ${loadedPolicy?.source ?? "default"}`,
+        `projectPolicy: ${getPolicyPath(ctx.cwd)}`,
         `zeroCatalog: ${current.policy.zeroCatalog.enabled ? "enabled" : "disabled"}`,
         `skills: ${current.skills.length}`,
         `duplicates: ${duplicates.size}`,

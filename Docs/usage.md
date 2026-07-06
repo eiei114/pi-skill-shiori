@@ -50,6 +50,14 @@ Cost/latency trade-offs:
 
 Create `.pi/skill-shiori.yml` in the project where Pi runs.
 
+Shiori also supports a user-global policy at `~/.pi/agent/skill-shiori.yml`. Policy resolution order is:
+
+1. Project policy: `<cwd>/.pi/skill-shiori.yml`
+2. User-global policy: `~/.pi/agent/skill-shiori.yml`
+3. Built-in defaults
+
+Use the user-global policy for personal defaults that should apply across projects, such as enabling Zero-Catalog Mode everywhere. Use a project policy when a workspace needs different trigger rules, inventory roots, or catalog behavior; project policy always wins over user-global policy.
+
 Minimal config:
 
 ```yaml
