@@ -4,6 +4,17 @@
 
 - Add Buy Me a Coffee sponsor button to README and native GitHub funding link via `.github/FUNDING.yml`.
 
+## [0.6.5] - 2026-07-07
+
+### Fixed
+
+- Aligned npm publish and auto-release GitHub Actions with the standard managed OSS workflow so version bumps on `main` create a tag/release and dispatch the publish workflow reliably.
+- Hardened publish-version detection so already-published versions skip cleanly while unexpected npm lookup failures still fail the workflow.
+
+### Changed
+
+- Updated release automation to the shared workflow pattern used by other managed OSS repos.
+
 ## [0.6.4] - 2026-07-07
 
 ### Fixed
