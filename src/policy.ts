@@ -1,8 +1,21 @@
 import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { parse } from "yaml";
 import { normalizeAlwaysVisible } from "./always-visible.js";
 import type { ShioriPolicy } from "./types.js";
+
+export type PolicySourceKind = "project" | "global" | "default";
+
+export interface LoadedPolicy {
+  policy: ShioriPolicy;
+  source: PolicySourceKind;
+  path?: string;
+}
+
+export interface PolicyLoadOptions {
+  globalPolicyPath?: string;
+}
 
 export const DEFAULT_POLICY: ShioriPolicy = {
   zeroCatalog: { enabled: false },
@@ -16,14 +29,38 @@ export function getPolicyPath(cwd: string): string {
   return join(cwd, ".pi", "skill-shiori.yml");
 }
 
-export async function loadPolicy(cwd: string): Promise<ShioriPolicy> {
+export function getGlobalPolicyPath(): string {
+  return join(homedir(), ".pi", "agent", "skill-shiori.yml");
+}
+
+export async function loadPolicy(cwd: string, options: PolicyLoadOptions = {}): Promise<ShioriPolicy> {
+  return (await loadPolicyWithSource(cwd, options)).policy;
+}
+
+export async function loadPolicyWithSource(cwd: string, options: PolicyLoadOptions = {}): Promise<LoadedPolicy> {
+  const projectPath = getPolicyPath(cwd);
+  const projectPolicy = await readPolicyIfPresent(projectPath);
+  if (projectPolicy) {
+    return { policy: projectPolicy, source: "project", path: projectPath };
+  }
+
+  const globalPath = options.globalPolicyPath ?? getGlobalPolicyPath();
+  const globalPolicy = await readPolicyIfPresent(globalPath);
+  if (globalPolicy) {
+    return { policy: globalPolicy, source: "global", path: globalPath };
+  }
+
+  return { policy: DEFAULT_POLICY, source: "default" };
+}
+
+async function readPolicyIfPresent(path: string): Promise<ShioriPolicy | undefined> {
   try {
-    const raw = await readFile(getPolicyPath(cwd), "utf8");
+    const raw = await readFile(path, "utf8");
     const parsed = parse(raw) as Partial<ShioriPolicy> | undefined;
     return normalizePolicy(parsed);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return DEFAULT_POLICY;
+      return undefined;
     }
     throw error;
   }

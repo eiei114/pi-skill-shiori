@@ -40,6 +40,23 @@ test("shiori:reload can reload runtime from UI selection", async () => {
   }
 });
 
+test("shiori:doctor reports the effective policy source", async () => {
+  const cwd = await makeSkillProject();
+  const { commands, events } = registerExtension();
+  try {
+    const ctx = makeCommandContext(cwd);
+
+    await commands.get("shiori:doctor").handler("", ctx);
+
+    const message = ctx.notifications.at(-1).message;
+    assert.match(message, new RegExp(`policy: ${escapeRegExp(join(cwd, ".pi", "skill-shiori.yml"))}`));
+    assert.match(message, /policySource: project/);
+    assert.match(message, new RegExp(`projectPolicy: ${escapeRegExp(join(cwd, ".pi", "skill-shiori.yml"))}`));
+  } finally {
+    await cleanup(cwd, events);
+  }
+});
+
 test("shiori:recommend reads query from UI input and queues the recommendation flow", async () => {
   const cwd = await makeSkillProject();
   const { commands, events, sentUserMessages } = registerExtension();
@@ -73,7 +90,10 @@ test("shiori:recommend review mode is selected through UI instead of --pick args
     await commands.get("shiori:recommend").handler("--pick ignored", ctx);
 
     assert.equal(sentUserMessages.length, 0);
-    assert.ok(ctx.notifications.some(({ message }) => /Matched 1 skill/.test(message)));
+    assert.ok(
+      ctx.notifications.some(({ message }) => /Matched \d+ skill\(s\): .*auth-helper/.test(message)),
+      JSON.stringify(ctx.notifications),
+    );
     assert.ok(ctx.notifications.some(({ message }) => /Description: Helps with auth login flows/.test(message)));
   } finally {
     await cleanup(cwd, events);
@@ -129,6 +149,10 @@ function makeCommandContext(cwd, { inputs = [], selects = [], confirms = [] } = 
       },
     },
   };
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function makeSkillProject() {
