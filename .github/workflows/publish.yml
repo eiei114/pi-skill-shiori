@@ -2,8 +2,16 @@ name: Publish to npm
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - package.json
+      - package-lock.json
+      - .github/workflows/publish.yml
     tags:
       - 'v*.*.*'
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       ref:
@@ -16,7 +24,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: npm-publish-${{ github.ref }}
+  group: npm-publish-${{ github.event.inputs.ref || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -26,16 +34,20 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
+
+      - name: Ensure npm supports trusted publishing
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         shell: bash
@@ -51,7 +63,9 @@ jobs:
       - name: Validate package
         shell: bash
         run: |
-          if node -e "process.exit(require('./package.json').scripts?.check ? 0 : 1)"; then
+          if node -e "process.exit(require('./package.json').scripts?.ci ? 0 : 1)"; then
+            npm run ci
+          elif node -e "process.exit(require('./package.json').scripts?.check ? 0 : 1)"; then
             npm run check
           elif node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)"; then
             npm test
@@ -67,12 +81,19 @@ jobs:
         run: |
           name=$(node -p "require('./package.json').name")
           version=$(node -p "require('./package.json').version")
-          if npm view "${name}@${version}" version >/dev/null 2>&1; then
+          set +e
+          output=$(npm view "${name}@${version}" version 2>&1)
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
             echo "${name}@${version} is already published."
             echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
+          elif printf '%s' "$output" | grep -Eq 'E404|404 Not Found'; then
             echo "Publishing ${name}@${version}."
             echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            printf '%s\n' "$output" >&2
+            exit "$status"
           fi
 
       - name: Publish to npm
