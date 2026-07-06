@@ -2,16 +2,8 @@ name: Publish to npm
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - package.json
-      - package-lock.json
-      - .github/workflows/publish.yml
     tags:
       - 'v*.*.*'
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       ref:
