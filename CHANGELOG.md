@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Bump package version to `0.6.7` for the next patch release.
+
 - Add Buy Me a Coffee sponsor button to README and native GitHub funding link via `.github/FUNDING.yml`.
 
 ## [0.6.6] - 2026-07-07
