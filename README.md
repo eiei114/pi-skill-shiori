@@ -17,7 +17,7 @@ For maintenance priorities and the phased plan, see [`ROADMAP.md`](ROADMAP.md).
 
 Pi Skill Shiori is a [Pi](https://pi.dev/) package for vaults or projects with many Agent Skills where the default catalog becomes noisy and expensive. It hides the normal skill catalog when safe, recommends triggerable skills with compact summaries, and loads full `SKILL.md` bodies on demand.
 
-`0.6.6` is the current working release. Prompt-boundary suppression is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
+`0.6.7` is the current working release. Prompt-boundary suppression is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
 
 ## Features
 
@@ -35,7 +35,7 @@ Pi Skill Shiori is a [Pi](https://pi.dev/) package for vaults or projects with m
 ### Global install from npm
 
 ```bash
-pi install npm:pi-skill-shiori@0.6.6
+pi install npm:pi-skill-shiori@0.6.7
 ```
 
 Without a version pin:
@@ -47,7 +47,7 @@ pi install npm:pi-skill-shiori
 ### Project-local install from npm
 
 ```bash
-pi install -l npm:pi-skill-shiori@0.6.6
+pi install -l npm:pi-skill-shiori@0.6.7
 ```
 
 Without a version pin:
@@ -59,7 +59,7 @@ pi install -l npm:pi-skill-shiori
 ### Install from GitHub
 
 ```bash
-pi install git:github.com/eiei114/pi-skill-shiori@v0.6.6
+pi install git:github.com/eiei114/pi-skill-shiori@v0.6.7
 pi install -l git:github.com/eiei114/pi-skill-shiori
 ```
 
