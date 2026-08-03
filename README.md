@@ -1,5 +1,7 @@
 # Pi Skill Shiori
 
+[![Join dotfield.xyz on Discord](https://img.shields.io/badge/Join%20dotfield.xyz%20on%20Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/4945dXZVW5)
+
 [![CI](https://github.com/eiei114/pi-skill-shiori/actions/workflows/ci.yml/badge.svg)](https://github.com/eiei114/pi-skill-shiori/actions/workflows/ci.yml)
 [![Publish](https://github.com/eiei114/pi-skill-shiori/actions/workflows/publish.yml/badge.svg)](https://github.com/eiei114/pi-skill-shiori/actions/workflows/publish.yml)
 [![npm version](https://img.shields.io/npm/v/pi-skill-shiori)](https://www.npmjs.com/package/pi-skill-shiori)
@@ -171,4 +173,4 @@ For vulnerability reporting, see [`SECURITY.md`](SECURITY.md).
 
 ## License
 
-MIT
+MIT
