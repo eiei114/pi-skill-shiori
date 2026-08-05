@@ -43,9 +43,15 @@ test('CHANGELOG documents the current package version', async () => {
 test('CHANGELOG Unreleased has no stale version references', async () => {
   const { version: current } = JSON.parse(await readFile(packageJson, 'utf8'));
   const content = await readFile(changelog, 'utf8');
-  const unreleased = content.match(/^## Unreleased\r?\n([\s\S]*?)(?=\r?\n## \[)/)?.[1] ?? '';
+  const unreleasedMatch = content.match(/^## Unreleased\r?\n([\s\S]*?)(?=\r?\n## \[)/m);
+  assert.ok(
+    unreleasedMatch,
+    'CHANGELOG must contain an ## Unreleased section before the first release heading',
+  );
+  const unreleased = unreleasedMatch[1];
 
-  for (const [, mentioned] of unreleased.matchAll(/`(\d+\.\d+\.\d+)`/g)) {
+  for (const match of unreleased.matchAll(/\d+\.\d+\.\d+/g)) {
+    const mentioned = match[0];
     assert.ok(
       compareSemver(mentioned, current) > 0,
       `Unreleased still references stale version ${mentioned}; current is ${current}`,
