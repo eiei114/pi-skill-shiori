@@ -3,8 +3,18 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
 const autoReleaseWorkflow = new URL('../.github/workflows/auto-release.yml', import.meta.url);
+const changelog = new URL('../CHANGELOG.md', import.meta.url);
 const packageJson = new URL('../package.json', import.meta.url);
 const readme = new URL('../README.md', import.meta.url);
+
+function compareSemver(a, b) {
+  const va = a.split('.').map(Number);
+  const vb = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (va[i] !== vb[i]) return va[i] - vb[i];
+  }
+  return 0;
+}
 
 test('auto-release notes render changelog separator as real newlines', async () => {
   const workflow = await readFile(autoReleaseWorkflow, 'utf8');
@@ -21,4 +31,30 @@ test('README install examples match package.json version', async () => {
   assert.match(content, new RegExp(`pi install npm:pi-skill-shiori@${version}`));
   assert.match(content, new RegExp(`pi install -l npm:pi-skill-shiori@${version}`));
   assert.match(content, new RegExp(`pi install git:github.com/eiei114/pi-skill-shiori@v${version}`));
+});
+
+test('CHANGELOG documents the current package version', async () => {
+  const { version } = JSON.parse(await readFile(packageJson, 'utf8'));
+  const content = await readFile(changelog, 'utf8');
+
+  assert.match(content, new RegExp(`^## \\[${version.replace(/\./g, '\\.')}\\]`, 'm'));
+});
+
+test('CHANGELOG Unreleased has no stale version references', async () => {
+  const { version: current } = JSON.parse(await readFile(packageJson, 'utf8'));
+  const content = await readFile(changelog, 'utf8');
+  const unreleasedMatch = content.match(/^## Unreleased\r?\n([\s\S]*?)(?=\r?\n## \[)/m);
+  assert.ok(
+    unreleasedMatch,
+    'CHANGELOG must contain an ## Unreleased section before the first release heading',
+  );
+  const unreleased = unreleasedMatch[1];
+
+  for (const match of unreleased.matchAll(/\d+\.\d+\.\d+/g)) {
+    const mentioned = match[0];
+    assert.ok(
+      compareSemver(mentioned, current) > 0,
+      `Unreleased still references stale version ${mentioned}; current is ${current}`,
+    );
+  }
 });
