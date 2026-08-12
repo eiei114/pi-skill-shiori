@@ -3,7 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
 const autoReleaseWorkflow = new URL('../.github/workflows/auto-release.yml', import.meta.url);
+const ciWorkflow = new URL('../.github/workflows/ci.yml', import.meta.url);
 const changelog = new URL('../CHANGELOG.md', import.meta.url);
+const roadmap = new URL('../ROADMAP.md', import.meta.url);
 const packageJson = new URL('../package.json', import.meta.url);
 const readme = new URL('../README.md', import.meta.url);
 
@@ -38,6 +40,23 @@ test('CHANGELOG documents the current package version', async () => {
   const content = await readFile(changelog, 'utf8');
 
   assert.match(content, new RegExp(`^## \\[${version.replace(/\./g, '\\.')}\\]`, 'm'));
+});
+
+test('CI runs version:check on pull requests', async () => {
+  const workflow = await readFile(ciWorkflow, 'utf8');
+
+  assert.match(workflow, /if: github\.event_name == 'pull_request'/);
+  assert.match(workflow, /npm run version:check/);
+});
+
+test('ROADMAP reflects shipped version:check CI gate', async () => {
+  const content = await readFile(roadmap, 'utf8');
+
+  assert.match(
+    content,
+    /\| 2 \| Add `version:check` CI gate \(validate semver and CHANGELOG policy on pull requests\) \| none \| done \|/,
+  );
+  assert.match(content, /- \[x\] \*\*`version:check` CI gate\*\*/);
 });
 
 test('CHANGELOG Unreleased has no stale version references', async () => {
