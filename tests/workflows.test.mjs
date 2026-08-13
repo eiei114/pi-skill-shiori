@@ -45,8 +45,13 @@ test('CHANGELOG documents the current package version', async () => {
 test('CI runs version:check on pull requests', async () => {
   const workflow = await readFile(ciWorkflow, 'utf8');
 
-  assert.match(workflow, /if: github\.event_name == 'pull_request'/);
-  assert.match(workflow, /npm run version:check/);
+  const versionCheckStep = workflow
+    .split(/\n(?=\s*- name: )/)
+    .find((step) => step.includes('- name: Verify version bump policy'));
+  assert.ok(versionCheckStep);
+  assert.match(versionCheckStep, /if: github\.event_name == 'pull_request'/);
+  assert.match(versionCheckStep, /BASE_REF: origin\/\$\{\{ github\.base_ref \}\}/);
+  assert.match(versionCheckStep, /run: npm run version:check/);
 });
 
 test('ROADMAP reflects shipped version:check CI gate', async () => {
