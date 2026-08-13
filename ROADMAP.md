@@ -58,7 +58,7 @@ semver classification. Patches default to `patch`; `none` means no package publi
 | # | Slice | Bump | Status |
 |---|---|---|---|
 | 1 | Add README status badges (CI, Publish, npm version, npm downloads, License, Pi package, Trusted Publishing) | patch | done |
-| 2 | Add `version:check` CI gate (block publishable-path changes without a semver increase) | none | planned |
+| 2 | Add `version:check` CI gate (validate semver and CHANGELOG policy on pull requests) | none | done |
 | 3 | Pin GitHub Actions to commit SHAs in `ci.yml`, `auto-release.yml`, `publish.yml` | none | planned |
 
 ### Month 2 — Stabilization and design boundaries
@@ -98,7 +98,7 @@ Current status against the shared Pi extension OSS policy. Gaps become Month 1 w
 - [x] `package.json` `files` is explicit (no `node_modules`, tests, or local state)
 - [x] No template `example-skill` / `example` / `example-theme` resources shipped
 - [ ] **README status badges** (CI, Publish, npm version, npm downloads, License, Pi package, Trusted Publishing) — *Month 1 #1*
-- [ ] **`version:check` CI gate** so publishable-path changes cannot merge without a bump — *Month 1 #2*
+- [x] **`version:check` CI gate** validates semver/CHANGELOG policy on pull requests — *Month 1 #2*
 - [ ] **Pin GitHub Actions to commit SHAs** (currently floating `@v4`) — *Month 1 #3*
 
 ## Current backlog integration
