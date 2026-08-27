@@ -42,6 +42,12 @@ test('CHANGELOG documents the current package version', async () => {
   assert.match(content, new RegExp(`^## \\[${version.replace(/\./g, '\\.')}\\]`, 'm'));
 });
 
+test('CI does not install unused Bun runtime', async () => {
+  const workflow = await readFile(ciWorkflow, 'utf8');
+
+  assert.doesNotMatch(workflow, /setup-bun/);
+});
+
 test('CI runs version:check on pull requests', async () => {
   const workflow = await readFile(ciWorkflow, 'utf8');
 
