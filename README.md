@@ -98,13 +98,19 @@ Commands take no inline arguments. Details are collected after launch via Pi UI 
 | `/shiori:recommend` | Interactive recommendation flow with optional pre-load. |
 | `/shiori:stats` | Show operational counters and recommendation quality summary. |
 
-Shiori registers one tool:
+Shiori registers two tools:
 
 ```ts
+// Discover matching skills for a natural-language task (may pre-load multiple bodies)
+shiori_recommend({ task: "browser scraping screenshot" })
+
+// Load one selected skill body after a candidate matches
 shiori_load_skill({ skill: "reddit-research" })
 ```
 
-The model receives the full selected `SKILL.md` content. The Pi UI shows a compact result like `✓ Loaded reddit-research (6.3KB)`.
+`shiori_recommend` returns compact summaries and may pre-load matching `SKILL.md` bodies. The Pi UI shows a collapsed result like `✓ Shiori playwright-cli [trigger], gstack-browse [description]`.
+
+`shiori_load_skill` loads one skill by name. The Pi UI shows a compact result like `✓ Loaded reddit-research (6.3KB)`.
 
 Recommended skills show compact reason badges (`[trigger]`, `[description]`, `[low match]`). See [`Docs/recommendation-surface.md`](Docs/recommendation-surface.md) for badge vocabulary and metrics interplay.
 
