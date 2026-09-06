@@ -35,6 +35,14 @@ test('README install examples match package.json version', async () => {
   assert.match(content, new RegExp(`pi install git:github.com/eiei114/pi-skill-shiori@v${version}`));
 });
 
+test('README tool examples document shiori_recommend and shiori_load_skill', async () => {
+  const content = await readFile(readme, 'utf8');
+
+  assert.match(content, /Shiori registers two tools:/);
+  assert.match(content, /shiori_recommend\(\{ task: "browser scraping screenshot" \}\)/);
+  assert.match(content, /shiori_load_skill\(\{ skill: "reddit-research" \}\)/);
+});
+
 test('CHANGELOG documents the current package version', async () => {
   const { version } = JSON.parse(await readFile(packageJson, 'utf8'));
   const content = await readFile(changelog, 'utf8');
