@@ -8,6 +8,7 @@ const changelog = new URL('../CHANGELOG.md', import.meta.url);
 const roadmap = new URL('../ROADMAP.md', import.meta.url);
 const packageJson = new URL('../package.json', import.meta.url);
 const readme = new URL('../README.md', import.meta.url);
+const usageDoc = new URL('../Docs/usage.md', import.meta.url);
 
 function compareSemver(a, b) {
   const va = a.split('.').map(Number);
@@ -39,6 +40,21 @@ test('README tool examples document shiori_recommend and shiori_load_skill', asy
   const content = await readFile(readme, 'utf8');
 
   assert.match(content, /Shiori registers two tools:/);
+  assert.match(content, /shiori_recommend\(\{ task: "browser scraping screenshot" \}\)/);
+  assert.match(content, /shiori_load_skill\(\{ skill: "reddit-research" \}\)/);
+});
+
+test('Docs bootstrap example documents skill-shiori.generated.yml path', async () => {
+  const content = await readFile(usageDoc, 'utf8');
+
+  assert.match(content, /\.pi\/skill-shiori\.generated\.yml/);
+  assert.match(content, /copy the sections you want into `\.pi\/skill-shiori\.yml`/);
+});
+
+test('Docs usage tool examples document shiori_recommend and shiori_load_skill', async () => {
+  const content = await readFile(usageDoc, 'utf8');
+
+  assert.match(content, /## Agent tools/);
   assert.match(content, /shiori_recommend\(\{ task: "browser scraping screenshot" \}\)/);
   assert.match(content, /shiori_load_skill\(\{ skill: "reddit-research" \}\)/);
 });

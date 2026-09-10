@@ -83,7 +83,7 @@ pi install -l /absolute/path/to/pi-skill-shiori
 1. Install the package (see [Install](#install)).
 2. Create `.pi/skill-shiori.yml` in your Pi project (see [Docs/usage.md](Docs/usage.md#configure)).
 3. Start Pi and run `/shiori:doctor` to confirm policy path, indexed roots, and suppression status.
-4. Use `/shiori:bootstrap` to draft a policy from discovered skills, then `/shiori:reload` after edits.
+4. Use `/shiori:bootstrap` to write `.pi/skill-shiori.generated.yml`, review it, copy needed sections into `.pi/skill-shiori.yml`, then run `/shiori:reload`.
 5. Ask the agent for help; Shiori injects compact candidates or use `/shiori:recommend` for an interactive flow.
 
 Commands take no inline arguments. Details are collected after launch via Pi UI prompts.
