@@ -100,7 +100,7 @@ Generate a starter policy from discovered skills:
 /shiori:bootstrap
 ```
 
-This writes a generated review file next to `.pi/skill-shiori.yml`. Review it before using it as your real policy.
+This writes `.pi/skill-shiori.generated.yml` next to your project policy. Review the draft, copy the sections you want into `.pi/skill-shiori.yml`, then run `/shiori:reload`.
 
 ## Suppression statuses
 
@@ -166,6 +166,24 @@ auto-inject: offers=2, loaded=1, zeroHits=1
 command: offers=1, loaded=2, zeroHits=1
 top skills: auth-helper(1/2), deploy-kit(1/1)
 ```
+
+## Agent tools
+
+Shiori registers two tools the agent can call after candidates appear:
+
+```ts
+// Discover matching skills for a natural-language task (may pre-load multiple bodies)
+shiori_recommend({ task: "browser scraping screenshot" })
+
+// Load one selected skill body after a candidate matches
+shiori_load_skill({ skill: "reddit-research" })
+```
+
+`shiori_recommend` returns compact summaries and may pre-load matching `SKILL.md` bodies. The Pi UI shows a collapsed result like `✓ Shiori playwright-cli [trigger], gstack-browse [description]`.
+
+`shiori_load_skill` loads one skill by name. The Pi UI shows a compact result like `✓ Loaded reddit-research (6.3KB)`.
+
+See [Recommendation surface](recommendation-surface.md) for badge vocabulary and multi-skill examples.
 
 ## Related docs
 
