@@ -34,8 +34,56 @@ export function retrieveCandidates(
   }
 
   return [...candidatesByName.values()]
-    .sort((a, b) => b.score - a.score || a.skill.name.localeCompare(b.skill.name))
+    .sort(compareCandidates)
     .slice(0, policy.candidateInjection.maxCandidates);
+}
+
+/**
+ * Order candidates so curated trigger matches rank ahead of heuristic
+ * description matches.
+ *
+ * Trigger matches carry a fixed score (0.95, see `evaluateSkill`), while
+ * description matches can reach a higher score from short query tokens that
+ * happen to appear as substrings — "is" in "history", "fix" in "prefix".
+ * Sorting by score alone therefore lets that noise push a genuine trigger match
+ * past a candidate cap, where it is dropped without a trace. A trigger is an
+ * explicit statement that the skill is relevant, so it outranks a heuristic
+ * substring match even when the heuristic scored higher.
+ *
+ * Every cap site must use this comparator: the per-variant cap inside
+ * `retrieveCandidates` runs before expanded retrieval merges variants, so a
+ * trigger match dropped there can never be restored downstream.
+ */
+export function compareCandidates(a: SkillCandidate, b: SkillCandidate): number {
+  const triggerDelta = Number(b.reason === "trigger") - Number(a.reason === "trigger");
+  if (triggerDelta !== 0) return triggerDelta;
+  return b.score - a.score || a.skill.name.localeCompare(b.skill.name);
+}
+
+/**
+ * Skill names the original query excludes via policy exclude triggers.
+ *
+ * `retrieveCandidates` evaluates excludes against whichever query string it
+ * receives. Expanded retrieval passes derived variants, and a derived variant can
+ * drop the surrounding context that made an exclude match ("do not use auth"
+ * becomes "auth"), so the exclusion no longer applies and the skill leaks back
+ * in. Callers that merge variants should apply the original query's excludes
+ * across the merged set.
+ */
+export function excludedSkillNames(
+  query: string,
+  skills: SkillRecord[],
+  policy: ShioriPolicy,
+): Set<string> {
+  const normalizedQuery = normalize(query);
+  const excluded = new Set<string>();
+  for (const skill of skills) {
+    const excludes = policy.skills[skill.name]?.triggers?.exclude ?? [];
+    if (excludes.some((trigger) => includesNormalized(normalizedQuery, trigger))) {
+      excluded.add(skill.name);
+    }
+  }
+  return excluded;
 }
 
 function evaluateSkill(
