@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
@@ -13,8 +13,20 @@ import { loadPolicy } from "../src/policy.js";
 import { isInventoryStale, refreshSkillInventory } from "../src/inventory.js";
 import { retrieveCandidatesExpanded } from "../src/retrieval-expanded.js";
 
-test("resolveVaultSkillRoots includes project, agents, and global roots", async () => {
-  const cwd = await mkdtemp(join(homedir(), "shiori-vault-roots-"));
+/**
+ * Create an isolated vault fixture under the OS temp directory and remove it
+ * when the test finishes. Fixtures used to be created under `homedir()` with no
+ * cleanup, so every test run left six `shiori-vault-*` directories in the user
+ * home folder.
+ */
+async function vaultFixture(t, prefix) {
+  const dir = await mkdtemp(join(tmpdir(), prefix));
+  t.after(() => rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }));
+  return dir;
+}
+
+test("resolveVaultSkillRoots includes project, agents, and global roots", async (t) => {
+  const cwd = await vaultFixture(t, "shiori-vault-roots-");
   const roots = resolveVaultSkillRoots(cwd);
 
   assert.ok(roots.some((root) => root.endsWith(join(".pi", "skills"))));
@@ -22,8 +34,8 @@ test("resolveVaultSkillRoots includes project, agents, and global roots", async 
   assert.ok(roots.some((root) => root.endsWith(join(".pi", "agent", "skills"))));
 });
 
-test("discoverSkills indexes skills from multiple vault-local roots with precedence", async () => {
-  const root = await mkdtemp(join(homedir(), "shiori-vault-multi-"));
+test("discoverSkills indexes skills from multiple vault-local roots with precedence", async (t) => {
+  const root = await vaultFixture(t, "shiori-vault-multi-");
   const piSkillDir = join(root, ".pi", "skills", "pi-only");
   const agentsSkillDir = join(root, ".agents", "skills", "agents-only");
   const extraSkillDir = join(root, "custom-skills", "extra-only");
@@ -55,8 +67,8 @@ test("discoverSkills indexes skills from multiple vault-local roots with precede
   assert.equal(skills.find((skill) => skill.name === "extra-only")?.source, join(root, "custom-skills"));
 });
 
-test("refreshSkillInventory rebuilds after local skill changes", async () => {
-  const root = await mkdtemp(join(homedir(), "shiori-vault-refresh-"));
+test("refreshSkillInventory rebuilds after local skill changes", async (t) => {
+  const root = await vaultFixture(t, "shiori-vault-refresh-");
   const skillDir = join(root, ".pi", "skills", "first-skill");
   await mkdir(skillDir, { recursive: true });
   await writeFile(
@@ -84,10 +96,12 @@ test("refreshSkillInventory rebuilds after local skill changes", async () => {
   assert.ok(names.includes("first-skill"));
   assert.ok(names.includes("second-skill"));
   assert.notEqual(refreshed.fingerprint, initial.fingerprint);
+
+  refreshed.index.close?.();
 });
 
-test("refreshed inventory keeps policy-aware description-first retrieval", async () => {
-  const root = await mkdtemp(join(homedir(), "shiori-vault-retrieval-"));
+test("refreshed inventory keeps policy-aware description-first retrieval", async (t) => {
+  const root = await vaultFixture(t, "shiori-vault-retrieval-");
   const skillDir = join(root, ".pi", "skills", "vault-search");
   await mkdir(skillDir, { recursive: true });
   await writeFile(
@@ -121,10 +135,12 @@ test("refreshed inventory keeps policy-aware description-first retrieval", async
   const vaultHit = hits.find((candidate) => candidate.skill.name === "vault-search");
   assert.ok(vaultHit, "vault-search should be in the hits");
   assert.match(vaultHit.why, /trigger|description/i);
+
+  index.close?.();
 });
 
-test("computeInventoryFingerprint changes when skill files change", async () => {
-  const root = await mkdtemp(join(homedir(), "shiori-vault-fingerprint-"));
+test("computeInventoryFingerprint changes when skill files change", async (t) => {
+  const root = await vaultFixture(t, "shiori-vault-fingerprint-");
   const roots = resolveVaultSkillRoots(root);
   const skillDir = join(root, ".pi", "skills", "demo");
   await mkdir(skillDir, { recursive: true });
@@ -136,8 +152,8 @@ test("computeInventoryFingerprint changes when skill files change", async () => 
   assert.notEqual(before, after);
 });
 
-test("discoverSkillsFromRoots deduplicates by discovery order", async () => {
-  const root = await mkdtemp(join(homedir(), "shiori-vault-dedupe-"));
+test("discoverSkillsFromRoots deduplicates by discovery order", async (t) => {
+  const root = await vaultFixture(t, "shiori-vault-dedupe-");
   const piDir = join(root, ".pi", "skills", "shared-name");
   const agentsDir = join(root, ".agents", "skills", "shared-name");
   for (const dir of [piDir, agentsDir]) {
