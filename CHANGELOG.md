@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.6.10] - 2026-09-21
+
+### Fixed
+
+- Prune stale `.pi/cache/skill-shiori/index-*.sqlite` databases. Every index rebuild wrote a new `index-<pid>-<ts>.sqlite` file and never removed the older ones, so a long-lived vault accumulated hundreds of files (336 files / 33 MB in the local vault). Rebuilds now delete databases older than a one hour grace window; the live database, recent files, and locked files are left in place.
+
 ## [0.6.9] - 2026-08-22
 
 ### Changed
