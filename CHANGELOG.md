@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.6.11] - 2026-09-21
+
 ### Fixed
 
 - Rank curated trigger matches ahead of heuristic description matches when enforcing candidate limits. Derived single-token query variants can score a perfect `1.00` from substring matches while trigger matches are fixed at `0.95`, so a genuine trigger match could be dropped by the candidate cap. The same ordering now applies at both cap sites, because the per-variant cap runs before expanded retrieval merges variants and a match dropped there can never be restored.
