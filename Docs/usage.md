@@ -167,6 +167,17 @@ command: offers=1, loaded=2, zeroHits=1
 top skills: auth-helper(1/2), deploy-kit(1/1)
 ```
 
+## Timing diagnostics
+
+Run `/shiori:stats` to see a compact timing line alongside the existing recommendation feedback summary. The line separates inventory refresh cost from retrieval cost; the JSON payload exposes the same machine-readable counters under `timing.inventoryRefresh` and `timing.retrieval`:
+
+- `count` — successful operations recorded in the current session
+- `lastMs` — duration of the most recent successful operation
+- `totalMs` — cumulative duration of successful operations
+- `maxMs` — longest successful operation
+
+Inventory refresh timing covers the successful session-start, manual `/shiori:reload`, and automatic refresh rebuilds. Retrieval timing covers successful auto-injection, `shiori_recommend`, and `/shiori:recommend` retrievals. These are in-memory, session-local diagnostics: Shiori does not store prompt text, full queries, skill bodies, or cross-session analytics.
+
 ## Agent tools
 
 Shiori registers two tools the agent can call after candidates appear:

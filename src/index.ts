@@ -7,7 +7,7 @@ import { findDuplicates, formatInventoryRoots, isAutoRefreshEnabled, isInventory
 import type { SkillIndex } from "./indexer.js";
 import { loadRecommendedSkills } from "./load-skills.js";
 import { formatPlanningKickoffMessage, isPlanningIntent } from "./planning-kickoff.js";
-import { createStats } from "./metrics.js";
+import { createStats, formatTimingSummary, measureTiming } from "./metrics.js";
 import { createRecommendationFeedback } from "./recommendation-feedback.js";
 import { getPolicyPath, loadPolicyWithSource, loadedPolicySignature, type LoadedPolicy } from "./policy.js";
 import {
@@ -48,7 +48,10 @@ export default function piSkillShiori(pi: ExtensionAPI) {
   async function reload(cwd: string, currentPolicy?: LoadedPolicy): Promise<SkillIndex> {
     currentPolicy ??= await loadPolicyWithSource(cwd);
     const policy = currentPolicy.policy;
-    const inventory = await refreshSkillInventory(cwd, policy, index);
+    const inventory = await measureTiming(
+      stats.timing.inventoryRefresh,
+      () => refreshSkillInventory(cwd, policy, index),
+    );
     index = inventory.index;
     inventoryFingerprint = inventory.fingerprint;
     inventoryRoots = inventory.roots;
@@ -139,7 +142,10 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       ctx.ui.notify("Pi Skill Shiori: Skill Catalog suppression pattern not found; leaving system prompt unchanged.", "warning");
     }
 
-    const candidates = retrieveCandidatesExpanded(event.prompt, current.skills, current.policy, current);
+    const candidates = await measureTiming(
+      stats.timing.retrieval,
+      () => retrieveCandidatesExpanded(event.prompt, current.skills, current.policy, current),
+    );
     if (candidates.length === 0) {
       stats.zeroCandidateCount += 1;
       recommendationFeedback.recordZeroCandidates("auto-inject");
@@ -174,7 +180,10 @@ export default function piSkillShiori(pi: ExtensionAPI) {
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const current = await ensureIndex(ctx.cwd);
       const policy = withRecommendLimits(current);
-      const candidates = retrieveCandidatesExpanded(params.task, current.skills, policy, current);
+      const candidates = await measureTiming(
+        stats.timing.retrieval,
+        () => retrieveCandidatesExpanded(params.task, current.skills, policy, current),
+      );
       const candidateNames = candidates.map((candidate) => candidate.skill.name);
       const loaded = await loadRecommendedSkills(candidates);
       recommendationFeedback.recordRecommendation(
@@ -340,7 +349,10 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       }
 
       const policy = withRecommendLimits(current);
-      const candidates = retrieveCandidatesExpanded(query, current.skills, policy, current);
+      const candidates = await measureTiming(
+        stats.timing.retrieval,
+        () => retrieveCandidatesExpanded(query, current.skills, policy, current),
+      );
       const candidateNames = candidates.map((candidate) => candidate.skill.name);
       const planning = isPlanningIntent(query);
       const reviewOnly = action === RECOMMEND_REVIEW_ONLY;
@@ -417,11 +429,16 @@ export default function piSkillShiori(pi: ExtensionAPI) {
     handler: async (_args, ctx) => {
       const payload = {
         ...stats,
+        timing: {
+          inventoryRefresh: { ...stats.timing.inventoryRefresh },
+          retrieval: { ...stats.timing.retrieval },
+        },
         recommendationFeedback: recommendationFeedback.summarize(),
       };
       ctx.ui.notify(
         [
           recommendationFeedback.formatSummary(),
+          formatTimingSummary(stats.timing),
           "",
           JSON.stringify(payload, null, 2),
         ].join("\n"),

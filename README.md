@@ -19,7 +19,7 @@ For maintenance priorities and the phased plan, see [`ROADMAP.md`](ROADMAP.md).
 
 Pi Skill Shiori is a [Pi](https://pi.dev/) package for vaults or projects with many Agent Skills where the default catalog becomes noisy and expensive. It hides the normal skill catalog when safe, recommends triggerable skills with compact summaries, and loads full `SKILL.md` bodies on demand.
 
-`0.6.12` is the current working release. Prompt-boundary suppression is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
+`0.6.13` is the current working release. Prompt-boundary suppression is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
 
 ## Features
 
@@ -31,13 +31,14 @@ Pi Skill Shiori is a [Pi](https://pi.dev/) package for vaults or projects with m
 - **SQLite FTS retrieval** — indexes skill names, descriptions, and policy triggers with `node:sqlite` + FTS5, with token-match fallback.
 - **Recommendation reason badges** — compact `[trigger]`, `[description]`, and `[low match]` labels on surfaced skills.
 - **Session-local feedback metrics** — `/shiori:stats` tracks offers, loads, and follow-through without storing prompts.
+- **Timing diagnostics** — `/shiori:stats` separates inventory refresh and retrieval cost without storing prompts, skill bodies, or cross-session analytics.
 
 ## Install
 
 ### Global install from npm
 
 ```bash
-pi install npm:pi-skill-shiori@0.6.12
+pi install npm:pi-skill-shiori@0.6.13
 ```
 
 Without a version pin:
@@ -49,7 +50,7 @@ pi install npm:pi-skill-shiori
 ### Project-local install from npm
 
 ```bash
-pi install -l npm:pi-skill-shiori@0.6.12
+pi install -l npm:pi-skill-shiori@0.6.13
 ```
 
 Without a version pin:
@@ -61,7 +62,7 @@ pi install -l npm:pi-skill-shiori
 ### Install from GitHub
 
 ```bash
-pi install git:github.com/eiei114/pi-skill-shiori@v0.6.12
+pi install git:github.com/eiei114/pi-skill-shiori@v0.6.13
 pi install -l git:github.com/eiei114/pi-skill-shiori
 ```
 
