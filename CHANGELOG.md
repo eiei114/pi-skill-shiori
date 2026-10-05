@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.6.13] - 2026-10-05
+
+### Added
+
+- Add session-local `/shiori:stats` timing diagnostics for inventory refresh and skill retrieval, with additive JSON counters and no prompt, skill-body, or cross-session analytics storage.
+
 ## [0.6.12] - 2026-09-30
 
 ### Changed

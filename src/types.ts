@@ -48,6 +48,18 @@ export interface SkillCandidate {
   reason: RecommendationReasonKind | null;
 }
 
+export interface TimingCounter {
+  lastMs: number;
+  totalMs: number;
+  maxMs: number;
+  count: number;
+}
+
+export interface ShioriTiming {
+  inventoryRefresh: TimingCounter;
+  retrieval: TimingCounter;
+}
+
 export interface ShioriStats {
   inventoryCount: number;
   duplicateCount: number;
@@ -60,4 +72,5 @@ export interface ShioriStats {
   lastReloadAt?: string;
   inventoryRefreshCount: number;
   inventoryAutoRefreshCount: number;
+  timing: ShioriTiming;
 }

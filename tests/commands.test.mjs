@@ -20,6 +20,10 @@ test("shiori:reload uses UI selection instead of --runtime args", async () => {
 
     assert.equal(ctx.reloadCount, 0);
     assert.match(ctx.notifications.at(-1).message, /Pi Skill Shiori reloaded:/);
+
+    await commands.get("shiori:stats").handler("", ctx);
+    const payload = readStatsPayload(ctx.notifications.at(-1).message);
+    assert.equal(payload.timing.inventoryRefresh.count, 1);
   } finally {
     await cleanup(cwd, events);
   }
@@ -100,6 +104,10 @@ test("shiori:recommend reads query from UI input and queues the recommendation f
     assert.match(sentUserMessages[0], /^auth login\n/);
     assert.match(sentUserMessages[0], /auth-helper/);
     assert.doesNotMatch(sentUserMessages[0], /ignored positional text/);
+
+    await commands.get("shiori:stats").handler("", ctx);
+    const payload = readStatsPayload(ctx.notifications.at(-1).message);
+    assert.equal(payload.timing.retrieval.count, 1);
   } finally {
     await cleanup(cwd, events);
   }
@@ -177,6 +185,10 @@ function makeCommandContext(cwd, { inputs = [], selects = [], confirms = [] } = 
       },
     },
   };
+}
+
+function readStatsPayload(message) {
+  return JSON.parse(message.slice(message.indexOf("{")));
 }
 
 function escapeRegExp(value) {
