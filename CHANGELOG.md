@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.6.14] - 2026-10-12
+
+### Changed
+
+- Pin the Pi SDK development and smoke-test dependencies to 1.1.0.
+
 ## [0.6.13] - 2026-10-05
 
 ### Added
