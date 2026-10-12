@@ -20,8 +20,16 @@ export function parseJsonLines(output) {
   });
 }
 
+export function normalizeVolatileText(text) {
+  return text
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<RPC_ID>")
+    .replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\b/g, "<TIMESTAMP>")
+    .replace(/(\\?"(?:last|total|max)Ms\\?":\\?\s*)\d+(?:\.\d+)?/g, '$1"<DURATION>"')
+    .replace(/\b(last|total|max)=\d+(?:\.\d+)?ms/g, "$1=<DURATION>");
+}
+
 function assertion(id, expected, observed, passed) {
-  return { id, expected, observed: JSON.stringify(observed), passed: passed === true };
+  return { id, expected, observed: normalizeVolatileText(JSON.stringify(observed)), passed: passed === true };
 }
 
 function registeredCommands(responses) {

@@ -9,6 +9,7 @@ import {
   SDK_NAMES,
   SDK_VERSIONS,
   UNHANDLED_ERROR_PATTERN,
+  normalizeVolatileText,
   VERIFICATION_CONTRACT,
 } from "./pi-sdk-smoke-contract.mjs";
 
@@ -293,13 +294,17 @@ function sanitizeEvidence(text) {
     [root, "<REPOSITORY>"],
     [agentDir, "<ISOLATED_PI_AGENT_DIR>"],
     [vaultDir, "<SMOKE_VAULT>"],
+    [homeDir, "<ISOLATED_HOME>"],
     [tmpdir(), "<TEMP_DIR>"],
     [homedir(), "<USER_HOME>"],
   ].filter(([path]) => path).sort(([left], [right]) => right.length - left.length);
-  return replacements.reduce((output, [path, replacement]) => output.replace(
-    new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"),
-    replacement,
-  ), text);
+  return normalizeVolatileText(replacements.reduce((output, [path, replacement]) => {
+    const escapedPath = JSON.stringify(path).slice(1, -1);
+    return [path, escapedPath].reduce((sanitized, variant) => sanitized.replace(
+      new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"),
+      replacement,
+    ), output);
+  }, text));
 }
 
 function recordCase(name, observation, fullOutput, exitCode, evidence = fullOutput) {

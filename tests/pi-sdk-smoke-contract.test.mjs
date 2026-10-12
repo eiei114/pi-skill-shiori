@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   behaviorAssertions,
+  normalizeVolatileText,
   parseJsonLines,
   SDK_VERSIONS,
   VERIFICATION_CONTRACT,
@@ -45,6 +46,14 @@ test("SDK smoke contract and JSONL parser accept LF and CRLF", () => {
   });
   const row = { type: "response", command: "get_commands", success: true };
   assert.deepEqual(parseJsonLines(`noise\r\n${JSON.stringify(row)}\n\n`), [row]);
+});
+
+test("smoke evidence normalizes volatile IDs, timestamps, and timings", () => {
+  const first = normalizeVolatileText('id="12345678-1234-1234-1234-123456789abc" at 2026-10-12T01:02:03.456Z last=9.25ms "lastMs":9.25');
+  const second = normalizeVolatileText('id="abcdefab-cdef-abcd-efab-cdefabcdefab" at 2026-11-13T04:05:06Z last=2ms "lastMs":2');
+  assert.equal(first, 'id="<RPC_ID>" at <TIMESTAMP> last=<DURATION> "lastMs":"<DURATION>"');
+  assert.equal(second, first);
+  assert.equal(normalizeVolatileText('message=\\"lastMs\\": 8.75'), 'message=\\"lastMs\\": "<DURATION>"');
 });
 
 test("extension registration requires the actual Shiori command", () => {
