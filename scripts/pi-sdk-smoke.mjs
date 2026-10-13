@@ -14,7 +14,11 @@ import {
 } from "./pi-sdk-smoke-contract.mjs";
 
 const root = resolve(import.meta.dirname, "..");
-const reportPath = resolve(root, "Docs/verification/pi-sdk-smoke.json");
+// Routine CI/local runs must not rewrite the tracked, platform-specific record.
+// Only an explicit `--update-curated-report` run refreshes the committed evidence.
+const reportPath = process.argv.includes("--update-curated-report")
+  ? resolve(root, "Docs/verification/pi-sdk-smoke.json")
+  : resolve(root, ".tmp/pi-sdk-smoke.json");
 const timeoutMs = 15_000;
 const cleanupGraceMs = 1_000;
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
@@ -307,7 +311,20 @@ function sanitizeEvidence(text) {
   }, text));
 }
 
-function recordCase(name, observation, fullOutput, exitCode, evidence = fullOutput) {
+function boundedEvidence(text, head = 3_000, tail = 3_000) {
+  if (text.length <= head + tail) return text;
+  return `${text.slice(0, head)}\n…[elided ${text.length - head - tail} characters]…\n${text.slice(-tail)}`;
+}
+
+// A line-wise record for one RPC step, so the committed evidence keeps the
+// required before/after-reload rows even when raw stdout is truncated.
+function promptSteps(rows) {
+  return rows
+    .filter((row) => row?.type === "response" && row.command === "prompt")
+    .map((row) => `${row.id}: success=${row.success} disposition=${row.data?.disposition ?? "none"}`);
+}
+
+function recordCase(name, observation, fullOutput, exitCode, evidence = fullOutput, reloadSequence = "") {
   const assertions = behaviorAssertions(name, observation);
   return {
     name,
@@ -316,7 +333,11 @@ function recordCase(name, observation, fullOutput, exitCode, evidence = fullOutp
     passed: exitCode === 0 && assertions.every((item) => item.passed)
       && !UNHANDLED_ERROR_PATTERN.test(fullOutput)
       && !EXTENSION_LOAD_ERROR_PATTERN.test(fullOutput),
-    evidence: sanitizeEvidence(evidence).slice(-6_000),
+    // Keep the beginning, the tail AND an explicit reload sequence so the
+    // committed evidence substantiates the reload assertion it makes.
+    evidence: reloadSequence
+      ? `${reloadSequence}\n${boundedEvidence(sanitizeEvidence(evidence))}`
+      : boundedEvidence(sanitizeEvidence(evidence)),
     assertions,
     hasUnhandledError: UNHANDLED_ERROR_PATTERN.test(fullOutput),
     hasExtensionLoadError: EXTENSION_LOAD_ERROR_PATTERN.test(fullOutput),
@@ -377,6 +398,15 @@ try {
   );
   const reloadOutput = `${first.fullOutput}\n${second.fullOutput}`;
   output = caseOutput("reload_cleanup", first, second);
+  const reloadSequence = [
+    "[reload sequence]",
+    "first process:",
+    ...promptSteps(first.responses).map((line) => `  ${line}`),
+    `  firstExitCode=${first.exitCode}`,
+    "second process:",
+    ...promptSteps(second.responses).map((line) => `  ${line}`),
+    `  secondExitCode=${second.exitCode}`,
+  ].join("\n");
   cases.push(recordCase("reload_cleanup", {
     firstNotifications: first.notifications,
     firstExitCode: first.exitCode,
@@ -385,7 +415,7 @@ try {
     secondNotifications: second.notifications,
     secondExitCode: second.exitCode,
     fullOutput: reloadOutput,
-  }, reloadOutput, first.exitCode === 0 && second.exitCode === 0 ? 0 : 1, output));
+  }, reloadOutput, first.exitCode === 0 && second.exitCode === 0 ? 0 : 1, output, reloadSequence));
 
   const expectedVersion = SDK_VERSIONS["@earendil-works/pi-coding-agent"];
   let shell;
