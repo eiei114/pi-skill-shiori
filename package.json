@@ -27,7 +27,7 @@
     "LICENSE",
     "SECURITY.md",
     "CHANGELOG.md",
-    "Docs",
+    "docs",
     "src"
   ],
   "scripts": {

@@ -17,7 +17,7 @@ const root = resolve(import.meta.dirname, "..");
 // Routine CI/local runs must not rewrite the tracked, platform-specific record.
 // Only an explicit `--update-curated-report` run refreshes the committed evidence.
 const reportPath = process.argv.includes("--update-curated-report")
-  ? resolve(root, "Docs/verification/pi-sdk-smoke.json")
+  ? resolve(root, "docs/verification/pi-sdk-smoke.json")
   : resolve(root, ".tmp/pi-sdk-smoke.json");
 const timeoutMs = 15_000;
 const cleanupGraceMs = 1_000;

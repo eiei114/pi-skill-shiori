@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   behaviorAssertions,
@@ -7,6 +8,33 @@ import {
   SDK_VERSIONS,
   VERIFICATION_CONTRACT,
 } from "../scripts/pi-sdk-smoke-contract.mjs";
+
+test("curated Pi SDK report is available at the canonical lowercase path", async () => {
+  const report = JSON.parse(await readFile(new URL("../docs/verification/pi-sdk-smoke.json", import.meta.url), "utf8"));
+  const requiredAssertions = {
+    extension_load: ["extension_registered"],
+    happy_path: ["feature_response"],
+    error_path: ["handled_error"],
+    reload_cleanup: ["reloaded_extension_registered", "reloaded_feature_response", "clean_shutdown"],
+    host_shell: ["native_shell_boundary"],
+  };
+
+  assert.equal(report.schema_version, 1);
+  assert.equal(report.verification_contract, VERIFICATION_CONTRACT);
+  assert.deepEqual(report.sdk_versions, SDK_VERSIONS);
+  assert.equal(report.unhandled_errors, 0);
+  assert.equal(report.extension_load_errors, 0);
+  assert.deepEqual(report.cases.map(({ name }) => name), Object.keys(requiredAssertions));
+  for (const item of report.cases) {
+    assert.equal(item.passed, true, `${item.name} report case must pass`);
+    assert.equal(item.exit_code, 0, `${item.name} report case must exit cleanly`);
+    const assertions = new Set(item.assertions.map(({ id, passed }) => {
+      assert.equal(passed, true, `${item.name}.${id} report assertion must pass`);
+      return id;
+    }));
+    for (const id of requiredAssertions[item.name]) assert.ok(assertions.has(id), `${item.name} report must contain ${id}`);
+  }
+});
 
 const commands = [
   { name: "shiori:doctor" },
