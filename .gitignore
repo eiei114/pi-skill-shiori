@@ -4,3 +4,4 @@ coverage/
 *.tsbuildinfo
 .env
 .DS_Store
+.tmp/

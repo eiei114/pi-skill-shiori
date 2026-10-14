@@ -38,6 +38,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Actual Pi SDK smoke
+        run: npm run smoke:pi
+
       - name: Pack dry run
         run: npm pack --dry-run
 

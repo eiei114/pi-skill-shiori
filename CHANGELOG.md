@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## [0.6.14] - 2026-10-12
+
+### Changed
+
+- Pin the Pi SDK development and smoke-test dependencies to 1.1.0.
+- Standardize the documentation directory to lowercase so the Pi SDK smoke report is available at `docs/verification/pi-sdk-smoke.json` on case-sensitive hosts.
+
 ## [0.6.13] - 2026-10-05
 
 ### Added
@@ -84,14 +91,14 @@ This project follows semantic versioning.
 
 ### Changed
 
-- `Docs/recommendation-surface.md` documents the dogfood review outcome and recommendation to keep badges on default surfaces.
+- `docs/recommendation-surface.md` documents the dogfood review outcome and recommendation to keep badges on default surfaces.
 
 ## [0.6.1] - 2026-07-01
 
 ### Changed
 
 - README aligned with Pi OSS minimal-docs policy: badges, required entrypoint sections, Quick start, Package contents, Links.
-- Detailed configuration and operational notes moved to `Docs/usage.md`.
+- Detailed configuration and operational notes moved to `docs/usage.md`.
 - README install examples and status text updated to match package version `0.6.1`.
 
 ## [0.6.0] - 2026-06-29
@@ -99,7 +106,7 @@ This project follows semantic versioning.
 ### Added
 
 - Bounded recommendation reason badges (`[trigger]`, `[description]`, `[low match]`) on recommended skills in auto-inject, `/shiori:recommend`, and `shiori_recommend` surfaces.
-- `Docs/recommendation-surface.md` describing badge vocabulary, a multi-skill example, and how badges relate to Always Visible Skill policy and recommendation metrics.
+- `docs/recommendation-surface.md` describing badge vocabulary, a multi-skill example, and how badges relate to Always Visible Skill policy and recommendation metrics.
 - Tests for reason present, absent, low-confidence, and badge formatting.
 
 ### Changed

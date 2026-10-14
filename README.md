@@ -19,7 +19,7 @@ For maintenance priorities and the phased plan, see [`ROADMAP.md`](ROADMAP.md).
 
 Pi Skill Shiori is a [Pi](https://pi.dev/) package for vaults or projects with many Agent Skills where the default catalog becomes noisy and expensive. It hides the normal skill catalog when safe, recommends triggerable skills with compact summaries, and loads full `SKILL.md` bodies on demand.
 
-`0.6.13` is the current working release. Prompt-boundary suppression is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
+`0.6.14` is the current working release. Prompt-boundary suppression is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
 
 ## Features
 
@@ -38,7 +38,7 @@ Pi Skill Shiori is a [Pi](https://pi.dev/) package for vaults or projects with m
 ### Global install from npm
 
 ```bash
-pi install npm:pi-skill-shiori@0.6.13
+pi install npm:pi-skill-shiori@0.6.14
 ```
 
 Without a version pin:
@@ -50,7 +50,7 @@ pi install npm:pi-skill-shiori
 ### Project-local install from npm
 
 ```bash
-pi install -l npm:pi-skill-shiori@0.6.13
+pi install -l npm:pi-skill-shiori@0.6.14
 ```
 
 Without a version pin:
@@ -62,7 +62,7 @@ pi install -l npm:pi-skill-shiori
 ### Install from GitHub
 
 ```bash
-pi install git:github.com/eiei114/pi-skill-shiori@v0.6.13
+pi install git:github.com/eiei114/pi-skill-shiori@v0.6.14
 pi install -l git:github.com/eiei114/pi-skill-shiori
 ```
 
@@ -82,7 +82,7 @@ pi install -l /absolute/path/to/pi-skill-shiori
 ## Quick start
 
 1. Install the package (see [Install](#install)).
-2. Create `.pi/skill-shiori.yml` in your Pi project (see [Docs/usage.md](Docs/usage.md#configure)).
+2. Create `.pi/skill-shiori.yml` in your Pi project (see [docs/usage.md](docs/usage.md#configure)).
 3. Start Pi and run `/shiori:doctor` to confirm policy path, indexed roots, and suppression status.
 4. Use `/shiori:bootstrap` to write `.pi/skill-shiori.generated.yml`, review it, copy needed sections into `.pi/skill-shiori.yml`, then run `/shiori:reload`.
 5. Ask the agent for help; Shiori injects compact candidates or use `/shiori:recommend` for an interactive flow.
@@ -113,17 +113,17 @@ shiori_load_skill({ skill: "reddit-research" })
 
 `shiori_load_skill` loads one skill by name. The Pi UI shows a compact result like `✓ Loaded reddit-research (6.3KB)`.
 
-Recommended skills show compact reason badges (`[trigger]`, `[description]`, `[low match]`). See [`Docs/recommendation-surface.md`](Docs/recommendation-surface.md) for badge vocabulary and metrics interplay.
+Recommended skills show compact reason badges (`[trigger]`, `[description]`, `[low match]`). See [`docs/recommendation-surface.md`](docs/recommendation-surface.md) for badge vocabulary and metrics interplay.
 
-For inventory roots, policy YAML, suppression statuses, and feedback metrics, see [`Docs/usage.md`](Docs/usage.md).
+For inventory roots, policy YAML, suppression statuses, and feedback metrics, see [`docs/usage.md`](docs/usage.md).
 
 ## Package contents
 
 | Path | Purpose |
 |---|---|
 | `src/` | Pi extension entrypoint and Shiori runtime |
-| `Docs/usage.md` | Configuration, inventory, suppression, and metrics details |
-| `Docs/recommendation-surface.md` | Recommendation badges and surface behavior |
+| `docs/usage.md` | Configuration, inventory, suppression, and metrics details |
+| `docs/recommendation-surface.md` | Recommendation badges and surface behavior |
 | `ROADMAP.md` | Maintenance direction and phased plan |
 | `CHANGELOG.md` | Version history |
 | `SECURITY.md` | Vulnerability reporting |
