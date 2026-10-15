@@ -142,6 +142,10 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       ctx.ui.notify("Pi Skill Shiori: Skill Catalog suppression pattern not found; leaving system prompt unchanged.", "warning");
     }
 
+    if (event.messageType === "custom") {
+      return { systemPrompt: suppression.systemPrompt };
+    }
+
     const candidates = await measureTiming(
       stats.timing.retrieval,
       () => retrieveCandidatesExpanded(event.prompt, current.skills, current.policy, current),

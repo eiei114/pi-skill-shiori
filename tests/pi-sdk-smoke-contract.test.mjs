@@ -67,10 +67,10 @@ const stats = {
 test("SDK smoke contract and JSONL parser accept LF and CRLF", () => {
   assert.equal(VERIFICATION_CONTRACT, "pi-sdk-behavior-v2");
   assert.deepEqual(SDK_VERSIONS, {
-    "@earendil-works/pi-agent-core": "1.1.0",
-    "@earendil-works/pi-ai": "1.1.0",
-    "@earendil-works/pi-coding-agent": "1.1.0",
-    "@earendil-works/pi-tui": "1.1.0",
+    "@earendil-works/pi-agent-core": "1.2.0",
+    "@earendil-works/pi-ai": "1.2.0",
+    "@earendil-works/pi-coding-agent": "1.2.0",
+    "@earendil-works/pi-tui": "1.2.0",
   });
   const row = { type: "response", command: "get_commands", success: true };
   assert.deepEqual(parseJsonLines(`noise\r\n${JSON.stringify(row)}\n\n`), [row]);
@@ -155,8 +155,8 @@ test("reload requires actual inventory refresh, second-host feature response, an
 });
 
 test("native shell requires the exact pinned Pi version and successful process exit", () => {
-  assert.equal(behaviorAssertions("host_shell", { exit_code: 0, fullOutput: "1.1.0\r\n", expectedVersion: "1.1.0" })[0].passed, true);
-  for (const [exit_code, fullOutput] of [[1, "1.1.0"], [0, "11.1.0"], [0, "1.1.0\nextra"]]) {
-    assert.equal(behaviorAssertions("host_shell", { exit_code, fullOutput, expectedVersion: "1.1.0" })[0].passed, false);
+  assert.equal(behaviorAssertions("host_shell", { exit_code: 0, fullOutput: "1.2.0\r\n", expectedVersion: "1.2.0" })[0].passed, true);
+  for (const [exit_code, fullOutput] of [[1, "1.2.0"], [0, "11.2.0"], [0, "1.2.0\nextra"]]) {
+    assert.equal(behaviorAssertions("host_shell", { exit_code, fullOutput, expectedVersion: "1.2.0" })[0].passed, false);
   }
 });
