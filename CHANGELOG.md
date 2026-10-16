@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.6.16] - 2026-10-17
+
+### Changed
+
+- Share the retrieval-index contract between standard and expanded retrieval.
+
 ## [0.6.15] - 2026-10-16
 
 ### Changed

@@ -1,10 +1,7 @@
 import { buildRetrievalQueries } from "./query.js";
 import { compareCandidates, excludedSkillNames, retrieveCandidates } from "./retrieval.js";
+import type { RetrievalIndex } from "./retrieval.js";
 import type { ShioriPolicy, SkillCandidate, SkillRecord } from "./types.js";
-
-interface RetrievalIndex {
-  search(query: string, limit: number): SkillRecord[];
-}
 
 export function retrieveCandidatesExpanded(
   query: string,
