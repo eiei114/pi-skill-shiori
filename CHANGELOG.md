@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.6.15] - 2026-10-16
+
+### Changed
+
+- Pin Pi SDK development and smoke-test dependencies to 1.2.0 and guard user-only prompt handling for the new `before_agent_start` message union.
+
 ## [0.6.14] - 2026-10-12
 
 ### Changed

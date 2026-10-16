@@ -89,6 +89,40 @@ test("shiori:doctor reloads when policy source changes mid-session", async () =>
   }
 });
 
+test("before_agent_start reads the correct message field from the Pi 1.2.0 event union", async () => {
+  const cwd = await makeSkillProject({ zeroCatalog: true });
+  const { events } = registerExtension();
+  try {
+    const ctx = makeCommandContext(cwd);
+    await events.get("session_start")({}, ctx);
+
+    const beforeAgentStart = events.get("before_agent_start");
+    const customResult = await beforeAgentStart({
+      messageType: "custom",
+      message: {
+        role: "custom",
+        customType: "test",
+        content: [{ type: "text", text: "auth login" }],
+        display: false,
+        timestamp: Date.now(),
+      },
+      systemPrompt: "<available_skills><skill><name>auth-helper</name><description>Helps with auth login flows</description></skill></available_skills>",
+    }, ctx);
+    assert.doesNotMatch(customResult.systemPrompt, /<available_skills>/);
+    assert.doesNotMatch(customResult.systemPrompt, /Pi Skill Shiori Candidates/);
+
+    const userResult = await beforeAgentStart({
+      messageType: "user",
+      prompt: "auth login",
+      images: [],
+      systemPrompt: "system instructions",
+    }, ctx);
+    assert.match(userResult.systemPrompt, /auth-helper/);
+  } finally {
+    await cleanup(cwd, events);
+  }
+});
+
 test("shiori:recommend reads query from UI input and queues the recommendation flow", async () => {
   const cwd = await makeSkillProject();
   const { commands, events, sentUserMessages } = registerExtension();
@@ -195,7 +229,7 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function makeSkillProject({ withPolicy = true } = {}) {
+async function makeSkillProject({ withPolicy = true, zeroCatalog = false } = {}) {
   const cwd = await mkdtemp(join(tmpdir(), "shiori-command-test-"));
   const skillDir = join(cwd, ".pi", "skills", "auth-helper");
   await mkdir(skillDir, { recursive: true });
@@ -216,6 +250,7 @@ async function makeSkillProject({ withPolicy = true } = {}) {
     await writeFile(
       join(cwd, ".pi", "skill-shiori.yml"),
       [
+        ...(zeroCatalog ? ["zeroCatalog:", "  enabled: true"] : []),
         "defaults:",
         "  activation: explicit",
         "candidateInjection:",
