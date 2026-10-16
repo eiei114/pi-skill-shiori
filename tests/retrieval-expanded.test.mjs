@@ -60,6 +60,25 @@ test("retrieveCandidatesExpanded keeps trigger badges when expanded variants sco
   assert.equal(auth?.reason, "trigger");
 });
 
+test("retrieveCandidatesExpanded forwards query variants to the supplied index", () => {
+  const searches = [];
+  const index = {
+    search(query, limit) {
+      searches.push({ query, limit });
+      return [];
+    },
+  };
+
+  retrieveCandidatesExpanded("browser scraping screenshot", skills, policy, index);
+
+  assert.ok(searches.length > 1, "expanded retrieval should search every query variant");
+  assert.deepEqual(searches[0], {
+    query: "browser scraping screenshot",
+    limit: policy.candidateInjection.maxCandidates * 4,
+  });
+  assert.ok(searches.some((search) => search.query === "browser"));
+});
+
 test("retrieveCandidatesExpanded expands Japanese auth queries", () => {
   const hits = retrieveCandidatesExpanded("認証まわりのスキルを探して", skills, policy);
   assert.ok(hits.length > 0);

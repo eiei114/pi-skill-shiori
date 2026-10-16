@@ -1,7 +1,7 @@
 import { attachRecommendationReason } from "./recommendation-reason.js";
 import type { ShioriPolicy, SkillCandidate, SkillRecord } from "./types.js";
 
-interface RetrievalIndex {
+export interface RetrievalIndex {
   search(query: string, limit: number): SkillRecord[];
 }
 
