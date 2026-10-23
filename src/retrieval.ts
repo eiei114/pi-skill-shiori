@@ -12,20 +12,21 @@ export function retrieveCandidates(
   index?: RetrievalIndex,
 ): SkillCandidate[] {
   const normalizedQuery = normalize(query);
+  const queryTokens = tokenize(normalizedQuery);
   const candidatesByName = new Map<string, SkillCandidate>();
   const triggerableSkills = skills.filter(
     (skill) => (policy.skills[skill.name]?.activation ?? policy.defaults.activation) === "triggerable",
   );
 
   for (const skill of triggerableSkills) {
-    const triggerCandidate = evaluateSkill(skill, normalizedQuery, policy, true);
+    const triggerCandidate = evaluateSkill(skill, normalizedQuery, queryTokens, policy, true);
     if (triggerCandidate) candidatesByName.set(skill.name, triggerCandidate);
   }
 
   const ftsMatches = index?.search(query, policy.candidateInjection.maxCandidates * 4) ?? [];
   const scoringPool = ftsMatches.length > 0 ? ftsMatches : skills;
   for (const skill of scoringPool) {
-    const candidate = evaluateSkill(skill, normalizedQuery, policy, false);
+    const candidate = evaluateSkill(skill, normalizedQuery, queryTokens, policy, false);
     if (!candidate) continue;
     const previous = candidatesByName.get(skill.name);
     if (!previous || candidate.score > previous.score) {
@@ -89,6 +90,7 @@ export function excludedSkillNames(
 function evaluateSkill(
   skill: SkillRecord,
   normalizedQuery: string,
+  queryTokens: ReadonlySet<string>,
   policy: ShioriPolicy,
   exactTriggerOnly: boolean,
 ): SkillCandidate | undefined {
@@ -113,7 +115,7 @@ function evaluateSkill(
   if (exactTriggerOnly) return undefined;
 
   const text = normalize(`${skill.name} ${skill.description} ${includes.join(" ")}`);
-  const tokenScore = scoreTokens(normalizedQuery, text);
+  const tokenScore = scoreTokens(queryTokens, text);
   if (tokenScore < policy.candidateInjection.minScore) return undefined;
   return attachRecommendationReason(
     {
@@ -134,8 +136,11 @@ function includesNormalized(query: string, trigger: string): boolean {
   return query.includes(normalize(trigger));
 }
 
-function scoreTokens(query: string, text: string): number {
-  const tokens = new Set(query.split(/[^\p{L}\p{N}_-]+/u).filter((token) => token.length >= 2));
+function tokenize(query: string): Set<string> {
+  return new Set(query.split(/[^\p{L}\p{N}_-]+/u).filter((token) => token.length >= 2));
+}
+
+function scoreTokens(tokens: ReadonlySet<string>, text: string): number {
   if (tokens.size === 0) return 0;
   let hits = 0;
   for (const token of tokens) {
