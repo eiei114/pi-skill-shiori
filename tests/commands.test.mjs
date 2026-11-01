@@ -137,6 +137,7 @@ test("shiori:recommend reads query from UI input and queues the recommendation f
     assert.equal(sentUserMessages.length, 1);
     assert.match(sentUserMessages[0], /^auth login\n/);
     assert.match(sentUserMessages[0], /auth-helper/);
+    assert.match(sentUserMessages[0], /Use this skill for auth login work\./);
     assert.doesNotMatch(sentUserMessages[0], /ignored positional text/);
 
     await commands.get("shiori:stats").handler("", ctx);
@@ -170,15 +171,51 @@ test("shiori:recommend review mode is selected through UI instead of --pick args
   }
 });
 
+test("shiori_load_skill returns the skill body and records the load", async () => {
+  const cwd = await makeSkillProject();
+  const { commands, events, tools } = registerExtension();
+  try {
+    const ctx = makeCommandContext(cwd);
+    const result = await tools.get("shiori_load_skill").execute("call-1", { skill: "auth-helper" }, undefined, undefined, ctx);
+    const skillPath = join(cwd, ".pi", "skills", "auth-helper", "SKILL.md");
+    const skillBody = [
+      "---",
+      "name: auth-helper",
+      "description: Helps with auth login flows",
+      "---",
+      "# Auth Helper",
+      "Use this skill for auth login work.",
+      "",
+    ].join("\n");
+
+    assert.deepEqual(result.content, [{
+      type: "text",
+      text: `Loaded auth-helper from ${skillPath}\n\n${skillBody}`,
+    }]);
+    assert.equal(result.details.skill, "auth-helper");
+    assert.equal(result.details.path, skillPath);
+    assert.equal(result.details.bytes, Buffer.byteLength(skillBody, "utf8"));
+    assert.ok(Number.isFinite(Date.parse(result.details.loadedAt)));
+
+    await commands.get("shiori:stats").handler("", ctx);
+    assert.equal(readStatsPayload(ctx.notifications.at(-1).message).loadedSkillCount, 1);
+  } finally {
+    await cleanup(cwd, events);
+  }
+});
+
 function registerExtension() {
   const commands = new Map();
   const events = new Map();
+  const tools = new Map();
   const sentUserMessages = [];
   piSkillShiori({
     on(name, handler) {
       events.set(name, handler);
     },
-    registerTool() {},
+    registerTool(options) {
+      tools.set(options.name, options);
+    },
     registerCommand(name, options) {
       commands.set(name, options);
     },
@@ -186,7 +223,7 @@ function registerExtension() {
       sentUserMessages.push(message);
     },
   });
-  return { commands, events, sentUserMessages };
+  return { commands, events, tools, sentUserMessages };
 }
 
 async function cleanup(cwd, events) {
