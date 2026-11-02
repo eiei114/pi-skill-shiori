@@ -5,7 +5,7 @@
     "@earendil-works/pi-agent-core": "1.2.0",
     "@earendil-works/pi-ai": "1.2.0",
     "@earendil-works/pi-coding-agent": "1.2.0",
-    "@earendil-works/pi-tui": "1.2.0"
+    "@earendil-works/pi-tui": "1.4.0"
   },
   "platform": "win32",
   "model_inference": "none; actual Pi host executes local Shiori slash commands in RPC mode",

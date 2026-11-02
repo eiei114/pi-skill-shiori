@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.6.19] - 2026-11-02
+
+### Changed
+
+- Align Pi SDK smoke-test versions with the pinned development dependencies.
+
 ## [0.6.18] - 2026-11-02
 
 ### Changed
