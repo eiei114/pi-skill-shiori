@@ -1,11 +1,11 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { evaluateAlwaysVisible, formatAlwaysVisibleDiagnostics } from "./always-visible.js";
 import { findDuplicates, formatInventoryRoots, isAutoRefreshEnabled, isInventoryStale, refreshSkillInventory } from "./inventory.js";
 import type { SkillIndex } from "./indexer.js";
-import { loadRecommendedSkills } from "./load-skills.js";
+import { loadRecommendedSkills, loadSkillContent } from "./load-skills.js";
 import { formatPlanningKickoffMessage, isPlanningIntent } from "./planning-kickoff.js";
 import { createStats, formatTimingSummary, measureTiming } from "./metrics.js";
 import { createRecommendationFeedback } from "./recommendation-feedback.js";
@@ -237,7 +237,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       const current = await ensureIndex(ctx.cwd);
       const record = findSkill(params.skill, current.skills);
       if (!record) throw new Error(`Skill not found: ${params.skill}`);
-      const content = await readFile(record.path, "utf8");
+      const content = await loadSkillContent(record.path);
       stats.loadedSkillCount += 1;
       recommendationFeedback.recordSkillLoaded(record.name);
       const details: ShioriLoadDetails = {
