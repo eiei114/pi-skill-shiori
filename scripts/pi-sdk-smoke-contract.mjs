@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 export const VERIFICATION_CONTRACT = "pi-sdk-behavior-v2";
 export const SDK_NAMES = [
   "@earendil-works/pi-agent-core",
@@ -5,7 +7,11 @@ export const SDK_NAMES = [
   "@earendil-works/pi-coding-agent",
   "@earendil-works/pi-tui",
 ];
-export const SDK_VERSIONS = Object.fromEntries(SDK_NAMES.map((name) => [name, "1.2.0"]));
+const packageManifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+export const SDK_VERSIONS = Object.fromEntries(SDK_NAMES.map((name) => [
+  name,
+  packageManifest.devDependencies?.[name],
+]));
 export const UNHANDLED_ERROR_PATTERN = /UnhandledPromiseRejection|uncaught exception|shutdown error/i;
 export const EXTENSION_LOAD_ERROR_PATTERN = /Failed to load extension|Error loading extension/i;
 

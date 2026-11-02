@@ -5,6 +5,7 @@ import {
   behaviorAssertions,
   normalizeVolatileText,
   parseJsonLines,
+  SDK_NAMES,
   SDK_VERSIONS,
   VERIFICATION_CONTRACT,
 } from "../scripts/pi-sdk-smoke-contract.mjs";
@@ -64,14 +65,14 @@ const stats = {
   message: `Summary\n{\n  "inventoryRefreshCount": 1\n}`,
 };
 
-test("SDK smoke contract and JSONL parser accept LF and CRLF", () => {
+test("SDK smoke contract follows exact manifest pins and JSONL parser accepts LF and CRLF", async () => {
   assert.equal(VERIFICATION_CONTRACT, "pi-sdk-behavior-v2");
-  assert.deepEqual(SDK_VERSIONS, {
-    "@earendil-works/pi-agent-core": "1.2.0",
-    "@earendil-works/pi-ai": "1.2.0",
-    "@earendil-works/pi-coding-agent": "1.2.0",
-    "@earendil-works/pi-tui": "1.2.0",
-  });
+  const packageManifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  assert.deepEqual(SDK_VERSIONS, Object.fromEntries(SDK_NAMES.map((name) => [
+    name,
+    packageManifest.devDependencies?.[name],
+  ])));
+  for (const version of Object.values(SDK_VERSIONS)) assert.match(version, /^\d+\.\d+\.\d+$/);
   const row = { type: "response", command: "get_commands", success: true };
   assert.deepEqual(parseJsonLines(`noise\r\n${JSON.stringify(row)}\n\n`), [row]);
 });
