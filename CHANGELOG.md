@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.6.19] - 2026-11-02
+
+### Fixed
+
+- Update the Pi Agent Core development pin to 1.4.0 and derive smoke-test SDK versions from the exact manifest pins.
+
 ## [0.6.18] - 2026-11-02
 
 ### Changed
