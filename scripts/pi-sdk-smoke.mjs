@@ -22,16 +22,15 @@ const reportPath = process.argv.includes("--update-curated-report")
 const timeoutMs = 15_000;
 const cleanupGraceMs = 1_000;
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
-const packageManifest = readJson(resolve(root, "package.json"));
 const sdkVersions = Object.fromEntries(SDK_NAMES.map((name) => [
   name,
   readJson(resolve(root, "node_modules", name, "package.json")).version,
 ]));
 
 for (const name of SDK_NAMES) {
-  if (packageManifest.devDependencies?.[name] !== SDK_VERSIONS[name]
-    || sdkVersions[name] !== SDK_VERSIONS[name]) {
-    throw new Error(`Smoke requires exact ${SDK_VERSIONS[name]} dev/test and installed SDK pin for ${name}; got ${packageManifest.devDependencies?.[name]} / ${sdkVersions[name]}`);
+  const expectedVersion = SDK_VERSIONS[name];
+  if (!/^\d+\.\d+\.\d+$/.test(expectedVersion ?? "") || sdkVersions[name] !== expectedVersion) {
+    throw new Error(`Smoke requires an exact manifest and installed SDK pin for ${name}; got ${expectedVersion} / ${sdkVersions[name]}`);
   }
 }
 

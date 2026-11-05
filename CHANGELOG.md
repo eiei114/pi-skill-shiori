@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.6.19] - 2026-11-02
+
+### Fixed
+
+- Derive Pi SDK smoke-test versions from the manifest so SDK pin updates do not fail against a stale hard-coded version.
+
 ## [0.6.18] - 2026-11-02
 
 ### Changed
