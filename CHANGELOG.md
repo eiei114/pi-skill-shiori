@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.6.19] - 2026-11-02
+
+### Fixed
+
+- Derive Pi SDK smoke checks and compatibility evidence from exact manifest pins, including the `@earendil-works/pi-ai` 1.4.0 update.
+
 ## [0.6.18] - 2026-11-02
 
 ### Changed
