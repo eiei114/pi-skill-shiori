@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.6.18] - 2026-11-02
+
+### Changed
+
+- Share one UTF-8 skill-body loader between recommendation and explicit skill loading.
+
 ## [0.6.17] - 2026-10-24
 
 ### Changed
