@@ -7,6 +7,7 @@
 ### Changed
 
 - Pin the Pi SDK development and smoke-test dependencies to 1.5.0 and align the direct TypeBox dependency with the SDK's 1.3.27 pin.
+- Add an actual Pi SDK host integration test that calls the TypeBox-backed `shiori_recommend` and `shiori_load_skill` tools through Pi with valid and missing arguments.
 
 ## [0.6.18] - 2026-11-02
 
