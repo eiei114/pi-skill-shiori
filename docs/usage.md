@@ -91,8 +91,10 @@ Policy rules:
 - `activation: triggerable` allows Shiori to recommend the skill for matching requests.
 - `alwaysVisible` lists skills that should remain visible in the Skill Catalog during Zero-Catalog Mode. Use this for a tiny safety-critical allowlist instead of broad trigger rules.
 - Missing `alwaysVisible` entries are reported by `/shiori:doctor` and warned once per session when Zero-Catalog Mode runs.
-- `candidateInjection.maxCandidates` limits how many suggestions enter the prompt.
-- `candidateInjection.minScore` drops weak matches.
+- `candidateInjection.maxCandidates` limits how many suggestions enter the prompt. Accepted values are integers `0`-`10`.
+- `candidateInjection.minScore` drops weak matches. Accepted values are numbers `0`-`1`.
+
+Invalid policy values never crash a session. `maxCandidates`, `minScore`, `activation`, and `skills` are validated while the policy loads: a rejected value falls back to its built-in default (or is dropped for a single skill) and `/shiori:doctor` plus `/shiori:stats` list the reason and the fallback value under `policyWarnings`. A YAML syntax error still fails the load, and the error message names the policy file so the typo is easy to find.
 
 Generate a starter policy from discovered skills:
 

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## [0.6.20] - 2026-11-15
+
+### Changed
+
+- Validate policy values while loading `skill-shiori.yml`: out-of-range `candidateInjection.maxCandidates`/`minScore`, unknown `activation` values, and non-mapping `skills` entries now fall back to defaults instead of flowing into retrieval, and the rejected fields are reported under `policyWarnings` in `/shiori:doctor` and `/shiori:stats`.
+- Name the policy file path in YAML syntax errors.
+
 ## [0.6.19] - 2026-11-07
 
 ### Changed

@@ -41,6 +41,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
   let inventoryFingerprint: string | undefined;
   let inventoryRoots: string[] = [];
   let loadedPolicy: LoadedPolicy | undefined;
+  let policyWarnings: string[] = [];
   let warnedAlwaysVisibleMissing = new Set<string>();
   const stats = createStats();
   const recommendationFeedback = createRecommendationFeedback();
@@ -56,6 +57,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
     inventoryFingerprint = inventory.fingerprint;
     inventoryRoots = inventory.roots;
     loadedPolicy = currentPolicy;
+    policyWarnings = currentPolicy.warnings ?? [];
     stats.inventoryCount = index.skills.length;
     stats.duplicateCount = findDuplicates(index.skills).size;
     stats.lastReloadAt = index.builtAt;
@@ -78,6 +80,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
 
     const policy = currentPolicy.policy;
     loadedPolicy = currentPolicy;
+    policyWarnings = currentPolicy.warnings ?? [];
     if (!isAutoRefreshEnabled(policy)) {
       return index;
     }
@@ -110,6 +113,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
     inventoryFingerprint = undefined;
     inventoryRoots = [];
     loadedPolicy = undefined;
+    policyWarnings = [];
   });
 
   pi.on("input", async (event) => {
@@ -275,6 +279,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
         `policy: ${loadedPolicy?.path ?? "default"}`,
         `policySource: ${loadedPolicy?.source ?? "default"}`,
         `projectPolicy: ${getPolicyPath(ctx.cwd)}`,
+        ...formatPolicyWarnings(policyWarnings),
         `zeroCatalog: ${current.policy.zeroCatalog.enabled ? "enabled" : "disabled"}`,
         `skills: ${current.skills.length}`,
         `duplicates: ${duplicates.size}`,
@@ -292,7 +297,8 @@ export default function piSkillShiori(pi: ExtensionAPI) {
         duplicates.size > 0 ||
         stats.suppressionStatus === "failed-pattern-not-found" ||
         alwaysVisible.missing.length > 0 ||
-        alwaysVisible.duplicates.length > 0;
+        alwaysVisible.duplicates.length > 0 ||
+        policyWarnings.length > 0;
       ctx.ui.notify(doctorLines.join("\n"), hasWarning ? "warning" : "info");
     },
   });
@@ -438,9 +444,11 @@ export default function piSkillShiori(pi: ExtensionAPI) {
           retrieval: { ...stats.timing.retrieval },
         },
         recommendationFeedback: recommendationFeedback.summarize(),
+        ...(policyWarnings.length > 0 ? { policyWarnings } : {}),
       };
       ctx.ui.notify(
         [
+          ...formatPolicyWarnings(policyWarnings),
           recommendationFeedback.formatSummary(),
           formatTimingSummary(stats.timing),
           "",
@@ -470,6 +478,14 @@ function findSkill(name: string, skills: SkillRecord[]): SkillRecord | undefined
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`;
   return `${(bytes / 1024).toFixed(1)}KB`;
+}
+
+function formatPolicyWarnings(warnings: string[]): string[] {
+  if (warnings.length === 0) return [];
+  return [
+    `policyWarnings: ${warnings.length}`,
+    ...warnings.map((warning) => `  - ${warning}`),
+  ];
 }
 
 
