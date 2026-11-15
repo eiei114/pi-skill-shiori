@@ -195,6 +195,73 @@ test("valid defaults.activation values are accepted unchanged", async () => {
   }
 });
 
+test("malformed policy sections warn once and use their defaults", async () => {
+  const cases = [
+    {
+      yaml: "candidateInjection: [3, 0.5]\n",
+      section: "candidateInjection",
+      kind: "an array",
+      assertDefault(policy) {
+        assert.equal(policy.candidateInjection.maxCandidates, DEFAULT_POLICY.candidateInjection.maxCandidates);
+        assert.equal(policy.candidateInjection.minScore, DEFAULT_POLICY.candidateInjection.minScore);
+      },
+    },
+    {
+      yaml: "defaults: triggerable\n",
+      section: "defaults",
+      kind: "a string",
+      assertDefault(policy) {
+        assert.equal(policy.defaults.activation, DEFAULT_POLICY.defaults.activation);
+      },
+    },
+    {
+      yaml: "zeroCatalog: []\n",
+      section: "zeroCatalog",
+      kind: "an array",
+      assertDefault(policy) {
+        assert.equal(policy.zeroCatalog.enabled, DEFAULT_POLICY.zeroCatalog.enabled);
+      },
+    },
+    {
+      yaml: "inventory: true\n",
+      section: "inventory",
+      kind: "a boolean",
+      assertDefault(policy) {
+        assert.equal(policy.inventory, undefined);
+      },
+    },
+  ];
+
+  for (const { yaml, section, kind, assertDefault } of cases) {
+    const { cwd, globalPolicyPath } = await makePolicyFixture();
+    try {
+      await writeProjectPolicy(cwd, yaml);
+
+      const loaded = await loadPolicyWithSource(cwd, { globalPolicyPath });
+
+      assertDefault(loaded.policy);
+      assert.deepEqual(loaded.warnings, [
+        `${section}: expected a mapping, got ${kind}; using built-in defaults`,
+      ]);
+    } finally {
+      await cleanup(cwd);
+    }
+  }
+});
+
+test("omitted policy sections do not warn", async () => {
+  const { cwd, globalPolicyPath } = await makePolicyFixture();
+  try {
+    await writeProjectPolicy(cwd, "alwaysVisible: []\n");
+
+    const loaded = await loadPolicyWithSource(cwd, { globalPolicyPath });
+
+    assert.equal(loaded.warnings, undefined);
+  } finally {
+    await cleanup(cwd);
+  }
+});
+
 test("invalid per-skill activation is dropped and warns", async () => {
   const { cwd, globalPolicyPath } = await makePolicyFixture();
   try {

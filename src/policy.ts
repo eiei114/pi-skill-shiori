@@ -119,10 +119,10 @@ function normalizePolicy(document: unknown): NormalizedPolicy {
     root = document;
   }
 
-  const zeroCatalogSection = isPlainObject(root.zeroCatalog) ? root.zeroCatalog : {};
-  const defaultsSection = isPlainObject(root.defaults) ? root.defaults : {};
-  const candidateInjectionSection = isPlainObject(root.candidateInjection) ? root.candidateInjection : {};
-  const inventorySection = isPlainObject(root.inventory) ? root.inventory : {};
+  const zeroCatalogSection = readPolicySection(root, "zeroCatalog", warnings);
+  const defaultsSection = readPolicySection(root, "defaults", warnings);
+  const candidateInjectionSection = readPolicySection(root, "candidateInjection", warnings);
+  const inventorySection = readPolicySection(root, "inventory", warnings);
 
   const extraRoots = Array.isArray(inventorySection.roots)
     ? inventorySection.roots
@@ -133,9 +133,8 @@ function normalizePolicy(document: unknown): NormalizedPolicy {
   return {
     policy: {
       zeroCatalog: {
-        // Existing behaviour: any truthy/falsy value is coerced, so only an
-        // omitted key falls back to the default. `zeroCatalog` is outside the
-        // validation scope of this change.
+        // Preserve existing truthy/falsy coercion for `enabled`; section shape
+        // is reported separately above.
         enabled: (zeroCatalogSection.enabled ?? DEFAULT_POLICY.zeroCatalog.enabled) as boolean,
       },
       defaults: {
@@ -164,6 +163,19 @@ function normalizePolicy(document: unknown): NormalizedPolicy {
     },
     warnings,
   };
+}
+
+function readPolicySection(
+  root: Record<string, unknown>,
+  name: "zeroCatalog" | "defaults" | "candidateInjection" | "inventory",
+  warnings: string[],
+): Record<string, unknown> {
+  const value = root[name];
+  if (isPlainObject(value)) return value;
+  if (Object.prototype.hasOwnProperty.call(root, name)) {
+    warnings.push(`${name}: expected a mapping, got ${describeKind(value)}; using built-in defaults`);
+  }
+  return {};
 }
 
 function readDefaultActivation(section: Record<string, unknown>, warnings: string[]): SkillActivation {
