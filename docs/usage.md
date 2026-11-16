@@ -94,7 +94,7 @@ Policy rules:
 - `candidateInjection.maxCandidates` limits how many suggestions enter the prompt. Accepted values are integers `0`-`10`.
 - `candidateInjection.minScore` drops weak matches. Accepted values are numbers `0`-`1`.
 
-Invalid policy values never crash a session. `maxCandidates`, `minScore`, `activation`, and `skills` are validated while the policy loads: a rejected value falls back to its built-in default (or is dropped for a single skill) and `/shiori:doctor` plus `/shiori:stats` list the reason and the fallback value under `policyWarnings`. A YAML syntax error still fails the load, and the error message names the policy file so the typo is easy to find.
+Invalid policy values never crash a session. `maxCandidates`, `minScore`, `activation`, `skills`, `triggers.include`/`triggers.exclude`, `alwaysVisible`, and `inventory.roots` are validated while the policy loads: a rejected value falls back to its built-in default (or is dropped for a single skill or trigger list) and `/shiori:doctor` plus `/shiori:stats` list the reason and the fallback value under `policyWarnings`. A value that is not the documented shape (for example a single string where a list of strings belongs) is dropped and reported the same way, so retrieval never receives the wrong type. A YAML syntax error still fails the load, and the error message names the policy file so the typo is easy to find.
 
 Generate a starter policy from discovered skills:
 

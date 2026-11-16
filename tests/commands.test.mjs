@@ -255,6 +255,96 @@ test("shiori_load_skill returns the skill body and records the load", async () =
   }
 });
 
+test("before_agent_start survives wrongly shaped skill triggers", async () => {
+  const cwd = await makeSkillProject({ withPolicy: false });
+  const { commands, events } = registerExtension();
+  try {
+    // A single string where the documented shape is a list: before this guard the
+    // registered hook threw TypeError (includes.find is not a function).
+    await mkdir(join(cwd, ".pi"), { recursive: true });
+    await writeFile(
+      join(cwd, ".pi", "skill-shiori.yml"),
+      [
+        "zeroCatalog:",
+        "  enabled: true",
+        "defaults:",
+        "  activation: triggerable",
+        "skills:",
+        "  auth-helper:",
+        "    triggers:",
+        "      include: auth",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const ctx = makeCommandContext(cwd);
+    await events.get("session_start")({}, ctx);
+
+    const beforeAgentStart = events.get("before_agent_start");
+    const result = await beforeAgentStart({
+      messageType: "user",
+      prompt: "auth login",
+      images: [],
+      systemPrompt: "system instructions",
+    }, ctx);
+
+    // The skill is still recommended through the description fallback, and the
+    // hook returns instead of throwing.
+    assert.match(result.systemPrompt, /auth-helper/);
+
+    await commands.get("shiori:doctor").handler("", ctx);
+    const doctor = ctx.notifications.filter((entry) => /Pi Skill Shiori doctor/.test(entry.message)).at(-1);
+    assert.equal(doctor.level, "warning");
+    assert.match(
+      doctor.message,
+      /- skills\.auth-helper\.triggers\.include: expected a list of strings, got a string; dropped/,
+    );
+  } finally {
+    await cleanup(cwd, events);
+  }
+});
+
+test("before_agent_start ignores non-string trigger entries", async () => {
+  const cwd = await makeSkillProject({ withPolicy: false });
+  const { events } = registerExtension();
+  try {
+    await mkdir(join(cwd, ".pi"), { recursive: true });
+    await writeFile(
+      join(cwd, ".pi", "skill-shiori.yml"),
+      [
+        "zeroCatalog:",
+        "  enabled: true",
+        "defaults:",
+        "  activation: triggerable",
+        "skills:",
+        "  auth-helper:",
+        "    triggers:",
+        "      include:",
+        "        - 42",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const ctx = makeCommandContext(cwd);
+    await events.get("session_start")({}, ctx);
+
+    const beforeAgentStart = events.get("before_agent_start");
+    const result = await beforeAgentStart({
+      messageType: "user",
+      prompt: "auth login",
+      images: [],
+      systemPrompt: "system instructions",
+    }, ctx);
+
+    // Previously TypeError: input.toLowerCase is not a function.
+    assert.match(result.systemPrompt, /auth-helper/);
+  } finally {
+    await cleanup(cwd, events);
+  }
+});
+
 function registerExtension() {
   const commands = new Map();
   const events = new Map();

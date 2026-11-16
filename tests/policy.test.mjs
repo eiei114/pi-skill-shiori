@@ -293,6 +293,185 @@ test("invalid per-skill activation is dropped and warns", async () => {
   }
 });
 
+test("skill triggers written as a string are dropped instead of crashing retrieval", async () => {
+  const cases = [
+    {
+      yaml: [
+        "skills:",
+        "  auth-helper:",
+        "    activation: triggerable",
+        "    triggers:",
+        "      include: auth",
+        "",
+      ].join("\n"),
+      expected: { activation: "triggerable" },
+      warning:
+        /^skills\.auth-helper\.triggers\.include: expected a list of strings, got a string; dropped$/,
+    },
+    {
+      yaml: [
+        "skills:",
+        "  auth-helper:",
+        "    activation: triggerable",
+        "    triggers:",
+        "      include: auth",
+        "      exclude:",
+        "        - logout",
+        "",
+      ].join("\n"),
+      expected: { activation: "triggerable", triggers: { exclude: ["logout"] } },
+      warning:
+        /^skills\.auth-helper\.triggers\.include: expected a list of strings, got a string; dropped$/,
+    },
+    {
+      yaml: [
+        "skills:",
+        "  auth-helper:",
+        "    triggers:",
+        "      exclude: logout",
+        "",
+      ].join("\n"),
+      expected: {},
+      warning:
+        /^skills\.auth-helper\.triggers\.exclude: expected a list of strings, got a string; dropped$/,
+    },
+    {
+      yaml: [
+        "skills:",
+        "  auth-helper:",
+        "    triggers: auth",
+        "",
+      ].join("\n"),
+      expected: {},
+      warning: /^skills\.auth-helper\.triggers: expected a mapping, got a string; dropped$/,
+    },
+  ];
+
+  for (const { yaml, expected, warning } of cases) {
+    const { cwd, globalPolicyPath } = await makePolicyFixture();
+    try {
+      await writeProjectPolicy(cwd, yaml);
+
+      const loaded = await loadPolicyWithSource(cwd, { globalPolicyPath });
+
+      assert.deepEqual(loaded.policy.skills["auth-helper"], expected);
+      assert.equal(loaded.warnings?.length, 1);
+      assert.match(loaded.warnings[0], warning);
+    } finally {
+      await cleanup(cwd);
+    }
+  }
+});
+
+test("non-string trigger entries are dropped and warn once", async () => {
+  const { cwd, globalPolicyPath } = await makePolicyFixture();
+  try {
+    await writeProjectPolicy(
+      cwd,
+      [
+        "skills:",
+        "  auth-helper:",
+        "    triggers:",
+        "      include:",
+        "        - auth",
+        "        - 42",
+        "",
+      ].join("\n"),
+    );
+
+    const loaded = await loadPolicyWithSource(cwd, { globalPolicyPath });
+
+    assert.deepEqual(loaded.policy.skills["auth-helper"]?.triggers, { include: ["auth"] });
+    assert.deepEqual(loaded.warnings, [
+      "skills.auth-helper.triggers.include: expected a list of strings, dropped 1 non-string entry",
+    ]);
+  } finally {
+    await cleanup(cwd);
+  }
+});
+
+test("valid trigger lists are accepted unchanged", async () => {
+  const { cwd, globalPolicyPath } = await makePolicyFixture();
+  try {
+    await writeProjectPolicy(
+      cwd,
+      [
+        "skills:",
+        "  auth-helper:",
+        "    activation: triggerable",
+        "    triggers:",
+        "      include:",
+        "        - auth",
+        "        - login",
+        "      exclude:",
+        "        - logout",
+        "",
+      ].join("\n"),
+    );
+
+    const loaded = await loadPolicyWithSource(cwd, { globalPolicyPath });
+
+    assert.deepEqual(loaded.policy.skills["auth-helper"], {
+      activation: "triggerable",
+      triggers: { include: ["auth", "login"], exclude: ["logout"] },
+    });
+    assert.equal(loaded.warnings, undefined);
+  } finally {
+    await cleanup(cwd);
+  }
+});
+
+test("a wrongly shaped alwaysVisible list falls back to the default allowlist and warns", async () => {
+  const cases = [
+    ["alwaysVisible: auth-helper\n", "a string"],
+    ["alwaysVisible: 7\n", "a number"],
+    ["alwaysVisible: {name: auth-helper}\n", "a mapping"],
+  ];
+
+  for (const [yaml, kind] of cases) {
+    const { cwd, globalPolicyPath } = await makePolicyFixture();
+    try {
+      await writeProjectPolicy(cwd, yaml);
+
+      const loaded = await loadPolicyWithSource(cwd, { globalPolicyPath });
+
+      assert.deepEqual(loaded.policy.alwaysVisible, DEFAULT_POLICY.alwaysVisible);
+      assert.equal(loaded.warnings?.length, 1);
+      assert.match(
+        loaded.warnings[0],
+        new RegExp(`^alwaysVisible: expected a list of strings, got ${kind}; dropped$`),
+      );
+    } finally {
+      await cleanup(cwd);
+    }
+  }
+});
+
+test("a wrongly shaped inventory.roots list is ignored and warns", async () => {
+  const cases = [
+    ['inventory:\n  roots: "./extra"\n', "a string"],
+    ["inventory:\n  roots: 42\n", "a number"],
+  ];
+
+  for (const [yaml, kind] of cases) {
+    const { cwd, globalPolicyPath } = await makePolicyFixture();
+    try {
+      await writeProjectPolicy(cwd, yaml);
+
+      const loaded = await loadPolicyWithSource(cwd, { globalPolicyPath });
+
+      assert.equal(loaded.policy.inventory, undefined);
+      assert.equal(loaded.warnings?.length, 1);
+      assert.match(
+        loaded.warnings[0],
+        new RegExp(`^inventory\\.roots: expected a list of strings, got ${kind}; dropped$`),
+      );
+    } finally {
+      await cleanup(cwd);
+    }
+  }
+});
+
 test("skills as an array or scalar is rejected and warns", async () => {
   const cases = [
     ["skills:\n  - auth-helper\n", "an array"],

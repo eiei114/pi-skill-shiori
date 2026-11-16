@@ -124,11 +124,7 @@ function normalizePolicy(document: unknown): NormalizedPolicy {
   const candidateInjectionSection = readPolicySection(root, "candidateInjection", warnings);
   const inventorySection = readPolicySection(root, "inventory", warnings);
 
-  const extraRoots = Array.isArray(inventorySection.roots)
-    ? inventorySection.roots
-        .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
-        .filter(Boolean)
-    : [];
+  const extraRoots = readInventoryRoots(inventorySection, warnings);
 
   return {
     policy: {
@@ -144,11 +140,7 @@ function normalizePolicy(document: unknown): NormalizedPolicy {
         maxCandidates: readMaxCandidates(candidateInjectionSection, warnings),
         minScore: readMinScore(candidateInjectionSection, warnings),
       },
-      alwaysVisible: normalizeAlwaysVisible(
-        Array.isArray(root.alwaysVisible)
-          ? root.alwaysVisible.filter((entry): entry is string => typeof entry === "string")
-          : DEFAULT_POLICY.alwaysVisible,
-      ).allowlist,
+      alwaysVisible: normalizeAlwaysVisible(readAlwaysVisible(root, warnings)).allowlist,
       inventory:
         extraRoots.length > 0 || inventorySection.autoRefreshOnChange === false
           ? {
@@ -225,6 +217,24 @@ function readMinScore(section: Record<string, unknown>, warnings: string[]): num
   return fallback;
 }
 
+function readAlwaysVisible(root: Record<string, unknown>, warnings: string[]): string[] | undefined {
+  const value = root.alwaysVisible;
+  if (value === undefined || value === null) return DEFAULT_POLICY.alwaysVisible;
+  const names = readStringList("alwaysVisible", value, warnings);
+  // A wrongly shaped allowlist falls back to the built-in one: silently letting
+  // `alwaysVisible: "auth-helper"` through would either split it per character
+  // or blank out the allowlist entirely.
+  return names ?? DEFAULT_POLICY.alwaysVisible;
+}
+
+function readInventoryRoots(section: Record<string, unknown>, warnings: string[]): string[] {
+  const value = section.roots;
+  if (value === undefined || value === null) return [];
+  const roots = readStringList("inventory.roots", value, warnings);
+  if (roots === undefined) return [];
+  return roots.map((entry) => entry.trim()).filter(Boolean);
+}
+
 function readSkills(root: Record<string, unknown>, warnings: string[]): Record<string, SkillPolicy> {
   const value = root.skills;
   if (value === undefined || value === null) return {};
@@ -241,24 +251,92 @@ function readSkills(root: Record<string, unknown>, warnings: string[]): Record<s
       warnings.push(`skills.${name}: expected a mapping, got ${describeKind(entry)}; dropped`);
       continue;
     }
-
-    const activation = entry.activation;
-    if (activation === undefined || activation === null) {
-      skills[name] = entry as SkillPolicy;
-      continue;
-    }
-    if (!isActivation(activation)) {
-      warnings.push(
-        `skills.${name}.activation: expected "explicit" or "triggerable", got ${describeValue(activation)}; ignored so defaults.activation applies`,
-      );
-      const { activation: _ignored, ...rest } = entry;
-      skills[name] = rest as SkillPolicy;
-      continue;
-    }
-    skills[name] = entry as SkillPolicy;
+    skills[name] = readSkillPolicy(name, entry, warnings);
   }
 
   return skills;
+}
+
+function readSkillPolicy(
+  name: string,
+  entry: Record<string, unknown>,
+  warnings: string[],
+): SkillPolicy {
+  const { activation, triggers, ...rest } = entry;
+  const skill = { ...rest } as SkillPolicy;
+
+  if (activation !== undefined && activation !== null) {
+    if (isActivation(activation)) {
+      skill.activation = activation;
+    } else {
+      warnings.push(
+        `skills.${name}.activation: expected "explicit" or "triggerable", got ${describeValue(activation)}; ignored so defaults.activation applies`,
+      );
+    }
+  }
+
+  if (triggers !== undefined && triggers !== null) {
+    const normalizedTriggers = readSkillTriggers(name, triggers, warnings);
+    if (normalizedTriggers) skill.triggers = normalizedTriggers;
+  }
+
+  return skill;
+}
+
+/**
+ * Trigger lists feed `includes.find` / `includesNormalized` in retrieval, so a
+ * string or a non-string entry crashed the `before_agent_start` hook with a
+ * TypeError. Only string lists survive; everything else is dropped with a
+ * field-path warning so the session keeps running on the default policy.
+ */
+function readSkillTriggers(
+  name: string,
+  value: unknown,
+  warnings: string[],
+): SkillPolicy["triggers"] | undefined {
+  const path = `skills.${name}.triggers`;
+  if (!isPlainObject(value)) {
+    warnings.push(`${path}: expected a mapping, got ${describeKind(value)}; dropped`);
+    return undefined;
+  }
+
+  const triggers: NonNullable<SkillPolicy["triggers"]> = {};
+  for (const field of ["include", "exclude"] as const) {
+    const list = value[field];
+    if (list === undefined || list === null) continue;
+    const entries = readStringList(`${path}.${field}`, list, warnings);
+    if (entries !== undefined) triggers[field] = entries;
+  }
+
+  return Object.keys(triggers).length > 0 ? triggers : undefined;
+}
+
+/**
+ * Reads a policy field that must be a list of strings. Returns `undefined` when
+ * the value is not a list at all, and a (possibly shortened) list otherwise.
+ */
+function readStringList(field: string, value: unknown, warnings: string[]): string[] | undefined {
+  if (!Array.isArray(value)) {
+    warnings.push(`${field}: expected a list of strings, got ${describeKind(value)}; dropped`);
+    return undefined;
+  }
+
+  const entries: string[] = [];
+  let dropped = 0;
+  for (const entry of value) {
+    if (typeof entry === "string") {
+      entries.push(entry);
+    } else {
+      dropped += 1;
+    }
+  }
+
+  if (dropped > 0) {
+    const noun = dropped === 1 ? "non-string entry" : "non-string entries";
+    warnings.push(`${field}: expected a list of strings, dropped ${dropped} ${noun}`);
+  }
+
+  return entries;
 }
 
 function isActivation(value: unknown): value is SkillActivation {

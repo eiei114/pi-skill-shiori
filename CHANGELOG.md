@@ -7,6 +7,7 @@
 ### Changed
 
 - Validate policy values while loading `skill-shiori.yml`: out-of-range `candidateInjection.maxCandidates`/`minScore`, unknown `activation` values, and non-mapping `skills` entries now fall back to defaults instead of flowing into retrieval, and the rejected fields are reported under `policyWarnings` in `/shiori:doctor` and `/shiori:stats`.
+- Validate the list-valued fields the same way: `skills.<name>.triggers.include`/`exclude`, `alwaysVisible`, and `inventory.roots` must be lists of strings. A single string or a non-string entry is dropped with a field-path warning instead of reaching retrieval, where it previously threw a `TypeError` from `before_agent_start` (`includes.find`, `input.toLowerCase`) or silently replaced the always-visible allowlist.
 - Name the policy file path in YAML syntax errors.
 
 ## [0.6.19] - 2026-11-07
