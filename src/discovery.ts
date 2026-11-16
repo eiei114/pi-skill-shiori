@@ -6,6 +6,74 @@ import type { ShioriPolicy, SkillRecord } from "./types.js";
 
 const SKILL_FILE = "SKILL.md";
 
+/** Frontmatter fence: a `---` line with optional trailing spaces or tabs. */
+const FRONTMATTER_FENCE = /^---[ \t]*$/;
+
+export interface SkillFrontmatter {
+  name?: string;
+  description?: string;
+  /** Markdown after the closing fence, with the frontmatter block removed. */
+  body: string;
+}
+
+/**
+ * Strip a leading UTF-8 BOM and normalise CRLF/CR line endings to LF. Windows
+ * editors and PowerShell 5 `Out-File`/`Set-Content` produce both, and a stray
+ * `\r` or BOM otherwise leaks into skill names and descriptions.
+ */
+export function normalizeSkillText(raw: string): string {
+  return raw.replace(/\uFEFF/g, "").replace(/\r\n?/g, "\n");
+}
+
+/**
+ * Split `SKILL.md` content into frontmatter metadata and the remaining body.
+ * Never throws: malformed YAML drops the metadata and keeps the file body, so
+ * discovery can still fall back to the directory name and first paragraph.
+ */
+export function parseSkillFrontmatter(raw: string): SkillFrontmatter {
+  const text = normalizeSkillText(raw);
+  const lines = text.split("\n");
+  const opening = lines[0];
+
+  if (opening === undefined || !FRONTMATTER_FENCE.test(opening)) {
+    return { body: text };
+  }
+
+  let closing = -1;
+  for (let index = 1; index < lines.length; index += 1) {
+    if (FRONTMATTER_FENCE.test(lines[index] ?? "")) {
+      closing = index;
+      break;
+    }
+  }
+
+  // An unterminated frontmatter block is treated as plain body text.
+  if (closing === -1) return { body: text };
+
+  const yamlText = lines.slice(1, closing).join("\n");
+  const result: SkillFrontmatter = { body: lines.slice(closing + 1).join("\n") };
+
+  // An empty frontmatter block is valid and simply carries no metadata.
+  if (!yamlText.trim()) return result;
+
+  try {
+    const meta: unknown = parseYaml(yamlText);
+    if (meta && typeof meta === "object") {
+      const record = meta as Record<string, unknown>;
+      if (typeof record.name === "string" && record.name.trim()) {
+        result.name = record.name.trim();
+      }
+      if (typeof record.description === "string" && record.description.trim()) {
+        result.description = record.description.trim();
+      }
+    }
+  } catch {
+    // Malformed YAML: keep the body, fall back to directory name and paragraph.
+  }
+
+  return result;
+}
+
 /** Project-local skill roots scanned on every vault-wide inventory build. */
 export const VAULT_LOCAL_SKILL_ROOT_SEGMENTS = [".pi/skills", ".agents/skills"] as const;
 
@@ -111,41 +179,18 @@ async function walk(dir: string, result: string[], visited: Set<string>): Promis
 
 async function readSkillRecord(path: string, root: string): Promise<SkillRecord> {
   const raw = await readFile(path, "utf8");
-  const frontmatter = raw.match(/^---\s*\n([\s\S]*?)\n---/);
-  let name = basename(dirname(path));
-  let description: string | undefined;
-
-  if (frontmatter?.[1]) {
-    try {
-      const meta = parseYaml(frontmatter[1]) as Record<string, unknown> | null;
-      if (meta && typeof meta === "object") {
-        if (typeof meta.name === "string" && meta.name.trim()) {
-          name = meta.name.trim();
-        }
-        if (typeof meta.description === "string" && meta.description.trim()) {
-          description = meta.description.trim();
-        }
-      }
-    } catch {
-      // Fall back to body text when frontmatter is malformed.
-    }
-  }
-
-  if (!description) {
-    description = firstParagraph(raw) ?? "No description.";
-  }
+  const parsed = parseSkillFrontmatter(raw);
 
   return {
-    name,
-    description,
+    name: parsed.name ?? basename(dirname(path)),
+    description: parsed.description ?? firstParagraph(parsed.body) ?? "No description.",
     path: resolve(path),
     source: root,
   };
 }
 
-function firstParagraph(raw: string): string | undefined {
-  return raw
-    .replace(/^---\s*\n[\s\S]*?\n---/, "")
+function firstParagraph(body: string): string | undefined {
+  return normalizeSkillText(body)
     .split(/\n\s*\n/)
     .map((part) => part.trim())
     .find(Boolean);

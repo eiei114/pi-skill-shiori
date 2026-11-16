@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [0.6.21] - 2026-11-17
+
+### Changed
+
+- Parse `SKILL.md` frontmatter that carries a UTF-8 BOM or CRLF line endings. `readSkillRecord` now normalises the file text before matching, so a BOM-prefixed file no longer loses its `name`/`description` to a directory-name and body-paragraph fallback, and no `\r` or BOM characters leak into `SkillRecord.name`/`description`. The frontmatter split moved into the exported `parseSkillFrontmatter` helper, which also tolerates trailing spaces or tabs after the fence and accepts an empty frontmatter block.
 ## [0.6.20] - 2026-11-15
 
 ### Changed
