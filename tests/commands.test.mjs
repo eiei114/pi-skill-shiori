@@ -61,6 +61,57 @@ test("shiori:doctor reports the effective policy source", async () => {
   }
 });
 
+test("shiori:doctor and shiori:stats report clamped policy values", async () => {
+  const cwd = await makeSkillProject();
+  const { commands, events } = registerExtension();
+  try {
+    await writeFile(
+      join(cwd, ".pi", "skill-shiori.yml"),
+      [
+        "defaults:",
+        "  activation: trigerable",
+        "candidateInjection:",
+        "  maxCandidates: -1",
+        "  minScore: \"high\"",
+        "skills:",
+        "  auth-helper:",
+        "    activation: triggerable",
+        "    triggers:",
+        "      include:",
+        "        - auth",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const ctx = makeCommandContext(cwd);
+    await commands.get("shiori:doctor").handler("", ctx);
+
+    const doctor = ctx.notifications.at(-1);
+    assert.equal(doctor.level, "warning");
+    assert.match(doctor.message, /^policyWarnings: 3$/m);
+    assert.match(doctor.message, /- defaults\.activation: expected "explicit" or "triggerable"/);
+    assert.match(doctor.message, /- candidateInjection\.maxCandidates: expected an integer between 0 and 10/);
+    assert.match(doctor.message, /- candidateInjection\.minScore: expected a finite number between 0 and 1/);
+    // The existing doctor lines stay in place.
+    assert.match(doctor.message, /policySource: project/);
+    assert.match(doctor.message, /zeroCatalog: disabled/);
+
+    await commands.get("shiori:stats").handler("", ctx);
+
+    const stats = ctx.notifications.at(-1);
+    assert.match(stats.message, /^policyWarnings: 3$/m);
+    const payload = readStatsPayload(stats.message);
+    assert.equal(payload.policyWarnings.length, 3);
+    // Existing /shiori:stats payload keys keep their shape.
+    assert.equal(typeof payload.inventoryCount, "number");
+    assert.equal(typeof payload.timing.retrieval.count, "number");
+    assert.ok(payload.recommendationFeedback);
+  } finally {
+    await cleanup(cwd, events);
+  }
+});
+
 test("shiori:doctor reloads when policy source changes mid-session", async () => {
   const cwd = await makeSkillProject({ withPolicy: false });
   const home = await mkdtemp(join(tmpdir(), "shiori-home-test-"));
@@ -199,6 +250,96 @@ test("shiori_load_skill returns the skill body and records the load", async () =
 
     await commands.get("shiori:stats").handler("", ctx);
     assert.equal(readStatsPayload(ctx.notifications.at(-1).message).loadedSkillCount, 1);
+  } finally {
+    await cleanup(cwd, events);
+  }
+});
+
+test("before_agent_start survives wrongly shaped skill triggers", async () => {
+  const cwd = await makeSkillProject({ withPolicy: false });
+  const { commands, events } = registerExtension();
+  try {
+    // A single string where the documented shape is a list: before this guard the
+    // registered hook threw TypeError (includes.find is not a function).
+    await mkdir(join(cwd, ".pi"), { recursive: true });
+    await writeFile(
+      join(cwd, ".pi", "skill-shiori.yml"),
+      [
+        "zeroCatalog:",
+        "  enabled: true",
+        "defaults:",
+        "  activation: triggerable",
+        "skills:",
+        "  auth-helper:",
+        "    triggers:",
+        "      include: auth",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const ctx = makeCommandContext(cwd);
+    await events.get("session_start")({}, ctx);
+
+    const beforeAgentStart = events.get("before_agent_start");
+    const result = await beforeAgentStart({
+      messageType: "user",
+      prompt: "auth login",
+      images: [],
+      systemPrompt: "system instructions",
+    }, ctx);
+
+    // The skill is still recommended through the description fallback, and the
+    // hook returns instead of throwing.
+    assert.match(result.systemPrompt, /auth-helper/);
+
+    await commands.get("shiori:doctor").handler("", ctx);
+    const doctor = ctx.notifications.filter((entry) => /Pi Skill Shiori doctor/.test(entry.message)).at(-1);
+    assert.equal(doctor.level, "warning");
+    assert.match(
+      doctor.message,
+      /- skills\.auth-helper\.triggers\.include: expected a list of strings, got a string; dropped/,
+    );
+  } finally {
+    await cleanup(cwd, events);
+  }
+});
+
+test("before_agent_start ignores non-string trigger entries", async () => {
+  const cwd = await makeSkillProject({ withPolicy: false });
+  const { events } = registerExtension();
+  try {
+    await mkdir(join(cwd, ".pi"), { recursive: true });
+    await writeFile(
+      join(cwd, ".pi", "skill-shiori.yml"),
+      [
+        "zeroCatalog:",
+        "  enabled: true",
+        "defaults:",
+        "  activation: triggerable",
+        "skills:",
+        "  auth-helper:",
+        "    triggers:",
+        "      include:",
+        "        - 42",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const ctx = makeCommandContext(cwd);
+    await events.get("session_start")({}, ctx);
+
+    const beforeAgentStart = events.get("before_agent_start");
+    const result = await beforeAgentStart({
+      messageType: "user",
+      prompt: "auth login",
+      images: [],
+      systemPrompt: "system instructions",
+    }, ctx);
+
+    // Previously TypeError: input.toLowerCase is not a function.
+    assert.match(result.systemPrompt, /auth-helper/);
   } finally {
     await cleanup(cwd, events);
   }
