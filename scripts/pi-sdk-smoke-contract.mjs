@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 export const VERIFICATION_CONTRACT = "pi-sdk-behavior-v2";
 export const SDK_NAMES = [
   "@earendil-works/pi-agent-core",
@@ -5,7 +8,10 @@ export const SDK_NAMES = [
   "@earendil-works/pi-coding-agent",
   "@earendil-works/pi-tui",
 ];
-export const SDK_VERSIONS = Object.fromEntries(SDK_NAMES.map((name) => [name, "1.5.0"]));
+// Read the pinned dev/test SDK versions from the manifest instead of hard-coding them,
+// so dependency bumps do not silently desync the smoke contract.
+const packageManifest = JSON.parse(readFileSync(resolve(import.meta.dirname, "..", "package.json"), "utf8"));
+export const SDK_VERSIONS = Object.fromEntries(SDK_NAMES.map((name) => [name, packageManifest.devDependencies?.[name]]));
 export const UNHANDLED_ERROR_PATTERN = /UnhandledPromiseRejection|uncaught exception|shutdown error/i;
 export const EXTENSION_LOAD_ERROR_PATTERN = /Failed to load extension|Error loading extension/i;
 
