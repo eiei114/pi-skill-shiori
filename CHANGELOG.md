@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.6.22] - 2026-11-21
+
+### Added
+
+- Report when the loaded extension source differs from disk in `/shiori:doctor` and `/shiori:stats`; restart Pi to load changed extension code.
+
 ## [0.6.21] - 2026-11-17
 
 ### Changed
