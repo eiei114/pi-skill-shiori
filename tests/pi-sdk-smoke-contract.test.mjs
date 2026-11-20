@@ -64,14 +64,14 @@ const stats = {
   message: `Summary\n{\n  "inventoryRefreshCount": 1\n}`,
 };
 
+const packageManifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+
 test("SDK smoke contract and JSONL parser accept LF and CRLF", () => {
   assert.equal(VERIFICATION_CONTRACT, "pi-sdk-behavior-v2");
-  assert.deepEqual(SDK_VERSIONS, {
-    "@earendil-works/pi-agent-core": "1.5.0",
-    "@earendil-works/pi-ai": "1.5.0",
-    "@earendil-works/pi-coding-agent": "1.5.0",
-    "@earendil-works/pi-tui": "1.5.0",
-  });
+  assert.deepEqual(SDK_VERSIONS, Object.fromEntries(
+    ["@earendil-works/pi-agent-core", "@earendil-works/pi-ai", "@earendil-works/pi-coding-agent", "@earendil-works/pi-tui"]
+      .map((name) => [name, packageManifest.devDependencies?.[name]]),
+  ));
   const row = { type: "response", command: "get_commands", success: true };
   assert.deepEqual(parseJsonLines(`noise\r\n${JSON.stringify(row)}\n\n`), [row]);
 });
