@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { closeSync, fstatSync, openSync, readSync } from "node:fs";
+import { closeSync, constants, fstatSync, openSync, readSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const MAX_EXTENSION_SOURCE_BYTES = 1024 * 1024;
@@ -43,7 +43,9 @@ function classifyReadError(error: unknown): ExtensionSourceUnavailableReason {
 function readSourceSha256(sourcePath: string): FileReadResult {
   let descriptor: number | undefined;
   try {
-    descriptor = openSync(sourcePath, "r");
+    // A source path replaced with a FIFO must not block diagnostics while it
+    // is opened. O_NONBLOCK is available on POSIX; Windows has no FIFO paths.
+    descriptor = openSync(sourcePath, constants.O_RDONLY | (constants.O_NONBLOCK ?? 0));
     const file = fstatSync(descriptor);
     if (!file.isFile()) return { reason: "read-failed" };
     if (file.size > MAX_EXTENSION_SOURCE_BYTES) return { reason: "too-large" };

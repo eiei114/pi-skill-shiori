@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -90,6 +91,38 @@ test("unsupported, missing, unreadable, and oversized sources use only fixed rea
       assert.equal(diagnostic.status, "unavailable");
       assert.equal(JSON.stringify(diagnostic).includes(directory), false);
     }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("a FIFO source path is rejected without blocking", { skip: process.platform === "win32" }, async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "shiori-extension-source-fifo-"));
+  const sourcePath = join(directory, "extension.ts");
+  try {
+    const created = spawnSync("mkfifo", [sourcePath], { encoding: "utf8", timeout: 2_000 });
+    if (created.error || created.status !== 0) {
+      t.skip("mkfifo is unavailable in this environment");
+      return;
+    }
+
+    const moduleUrl = new URL("../src/extension-source.ts", import.meta.url).href;
+    const childScript = `
+      import { captureLoadedExtensionSource } from ${JSON.stringify(moduleUrl)};
+      console.log(JSON.stringify(captureLoadedExtensionSource(${JSON.stringify(pathToFileURL(sourcePath).href)})));
+    `;
+    const child = spawnSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", childScript],
+      { cwd: process.cwd(), encoding: "utf8", timeout: 3_000 },
+    );
+
+    assert.equal(child.error, undefined, `FIFO source read did not finish: ${child.error?.message}`);
+    assert.equal(child.status, 0, child.stderr);
+    const diagnostic = JSON.parse(child.stdout);
+    assert.equal(diagnostic.capturedSha256, null);
+    assert.equal(diagnostic.unavailableReason, "read-failed");
+    assert.equal(child.stdout.includes(sourcePath), false);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
