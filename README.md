@@ -19,7 +19,7 @@ For maintenance priorities and the phased plan, see [`ROADMAP.md`](ROADMAP.md).
 
 Pi Skill Shiori is a [Pi](https://pi.dev/) package for vaults or projects with many Agent Skills where the default catalog becomes noisy and expensive. It hides the normal skill catalog when safe, recommends triggerable skills with compact summaries, and loads full `SKILL.md` bodies on demand.
 
-`0.6.21` is the current working release. Prompt-boundary suppression is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
+`0.6.22` is the current working release. Prompt-boundary suppression is intentionally conservative: if Shiori cannot safely recognize a catalog boundary, it leaves the prompt untouched and warns instead of deleting too much.
 
 ## Features
 
@@ -32,13 +32,14 @@ Pi Skill Shiori is a [Pi](https://pi.dev/) package for vaults or projects with m
 - **Recommendation reason badges** — compact `[trigger]`, `[description]`, and `[low match]` labels on surfaced skills.
 - **Session-local feedback metrics** — `/shiori:stats` tracks offers, loads, and follow-through without storing prompts.
 - **Timing diagnostics** — `/shiori:stats` separates inventory refresh and retrieval cost without storing prompts, skill bodies, or cross-session analytics.
+- **Loaded extension source diagnostics** — `/shiori:doctor` and `/shiori:stats` report when the extension source changed on disk since Pi loaded it. Restart Pi to load changed extension code; `/shiori:reload` refreshes the inventory but cannot replace cached modules.
 
 ## Install
 
 ### Global install from npm
 
 ```bash
-pi install npm:pi-skill-shiori@0.6.21
+pi install npm:pi-skill-shiori@0.6.22
 ```
 
 Without a version pin:
@@ -50,7 +51,7 @@ pi install npm:pi-skill-shiori
 ### Project-local install from npm
 
 ```bash
-pi install -l npm:pi-skill-shiori@0.6.21
+pi install -l npm:pi-skill-shiori@0.6.22
 ```
 
 Without a version pin:
@@ -62,7 +63,7 @@ pi install -l npm:pi-skill-shiori
 ### Install from GitHub
 
 ```bash
-pi install git:github.com/eiei114/pi-skill-shiori@v0.6.21
+pi install git:github.com/eiei114/pi-skill-shiori@v0.6.22
 pi install -l git:github.com/eiei114/pi-skill-shiori
 ```
 
@@ -93,11 +94,11 @@ Commands take no inline arguments. Details are collected after launch via Pi UI 
 
 | Command | Purpose |
 |---|---|
-| `/shiori:doctor` | Show policy path, indexed roots, inventory count, retrieval backend, suppression status, and code marker. |
+| `/shiori:doctor` | Show policy path, indexed roots, inventory count, retrieval backend, suppression status, code marker, and loaded-extension source status. |
 | `/shiori:bootstrap` | Generate a review draft policy from discovered skill descriptions. |
 | `/shiori:reload` | Rebuild Shiori skill inventory; optionally ask Pi to reload runtime resources. |
 | `/shiori:recommend` | Interactive recommendation flow with optional pre-load. |
-| `/shiori:stats` | Show operational counters and recommendation quality summary. |
+| `/shiori:stats` | Show operational counters, recommendation quality summary, and loaded-extension source status. |
 
 Shiori registers two tools:
 

@@ -8,6 +8,8 @@ import type { SkillIndex } from "./indexer.js";
 import { loadRecommendedSkills, loadSkillContent } from "./load-skills.js";
 import { formatPlanningKickoffMessage, isPlanningIntent } from "./planning-kickoff.js";
 import { createStats, formatTimingSummary, measureTiming } from "./metrics.js";
+import { captureLoadedExtensionSource, inspectLoadedExtensionSource } from "./extension-source.js";
+import type { LoadedExtensionSource } from "./extension-source.js";
 import { createRecommendationFeedback } from "./recommendation-feedback.js";
 import { getPolicyPath, loadPolicyWithSource, loadedPolicySignature, type LoadedPolicy } from "./policy.js";
 import {
@@ -29,6 +31,7 @@ interface ShioriLoadDetails {
 }
 
 const SHIORI_CODE_MARKER = "prompt-boundary-v3";
+const LOADED_EXTENSION_SOURCE = captureLoadedExtensionSource(import.meta.url);
 const RECOMMEND_MAX_CANDIDATES = 5;
 const RELOAD_INVENTORY_ONLY = "Shiori inventory only";
 const RELOAD_WITH_RUNTIME = "Shiori inventory + Pi runtime resources";
@@ -36,7 +39,10 @@ const RECOMMEND_QUEUE_TASK = "Pre-load matches and queue task for agent";
 const RECOMMEND_REVIEW_ONLY = "Review recommendations only";
 const CANCEL_CHOICE = "Cancel";
 
-export default function piSkillShiori(pi: ExtensionAPI) {
+export default function piSkillShiori(
+  pi: ExtensionAPI,
+  loadedExtensionSource: LoadedExtensionSource = LOADED_EXTENSION_SOURCE,
+) {
   let index: SkillIndex | undefined;
   let inventoryFingerprint: string | undefined;
   let inventoryRoots: string[] = [];
@@ -274,6 +280,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       const current = await ensureIndex(ctx.cwd);
       const duplicates = findDuplicates(current.skills);
       const alwaysVisible = evaluateAlwaysVisible(current.policy.alwaysVisible, current.skills);
+      const extensionSource = inspectLoadedExtensionSource(loadedExtensionSource);
       const doctorLines = [
         "Pi Skill Shiori doctor",
         `policy: ${loadedPolicy?.path ?? "default"}`,
@@ -292,13 +299,15 @@ export default function piSkillShiori(pi: ExtensionAPI) {
         `suppression: ${stats.suppressionStatus}`,
         `code: ${SHIORI_CODE_MARKER}`,
         `builtAt: ${current.builtAt}`,
+        `extensionSource: ${formatExtensionSource(extensionSource)}`,
       ];
       const hasWarning =
         duplicates.size > 0 ||
         stats.suppressionStatus === "failed-pattern-not-found" ||
         alwaysVisible.missing.length > 0 ||
         alwaysVisible.duplicates.length > 0 ||
-        policyWarnings.length > 0;
+        policyWarnings.length > 0 ||
+        extensionSource.status === "changed";
       ctx.ui.notify(doctorLines.join("\n"), hasWarning ? "warning" : "info");
     },
   });
@@ -445,6 +454,7 @@ export default function piSkillShiori(pi: ExtensionAPI) {
         },
         recommendationFeedback: recommendationFeedback.summarize(),
         ...(policyWarnings.length > 0 ? { policyWarnings } : {}),
+        extensionSource: inspectLoadedExtensionSource(loadedExtensionSource),
       };
       ctx.ui.notify(
         [
@@ -469,6 +479,16 @@ export default function piSkillShiori(pi: ExtensionAPI) {
       ctx.ui.notify(`Generated ${outputPath}`, "info");
     },
   });
+}
+
+function formatExtensionSource(
+  extensionSource: ReturnType<typeof inspectLoadedExtensionSource>,
+): string {
+  if (extensionSource.status === "current") return "current";
+  if (extensionSource.status === "changed") {
+    return "changed on disk — restart Pi to load the new extension code; /shiori:reload cannot replace cached modules";
+  }
+  return `unavailable (${extensionSource.reason ?? "read-failed"})`;
 }
 
 function findSkill(name: string, skills: SkillRecord[]): SkillRecord | undefined {
