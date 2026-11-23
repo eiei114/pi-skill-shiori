@@ -35,6 +35,46 @@ test("recordRecommendation tallies offers, loads, and follow-through rate", () =
   assert.equal(summary.bySource.tool.loaded, 1);
 });
 
+test("summarize keeps per-source counts aligned with totals at collection time", () => {
+  const feedback = createRecommendationFeedback();
+
+  feedback.recordRecommendation("command", ["auth-helper"], ["auth-helper"]);
+  const earlier = feedback.summarize();
+
+  feedback.recordRecommendation("command", ["login-flow", "token-helper"], ["login-flow"]);
+  feedback.recordZeroCandidates("command");
+  const later = feedback.summarize();
+
+  for (const [summary, expected] of [
+    [earlier, { offers: 1, candidateSlots: 1, loaded: 1, zeroHits: 0 }],
+    [later, { offers: 2, candidateSlots: 3, loaded: 2, zeroHits: 1 }],
+  ]) {
+    assert.deepEqual(summary.bySource.command, expected);
+    assert.equal(summary.totalOffers, expected.offers);
+    assert.equal(summary.totalCandidateSlots, expected.candidateSlots);
+    assert.equal(summary.totalLoaded, expected.loaded);
+    assert.equal(summary.zeroCandidateQueries, expected.zeroHits);
+  }
+});
+
+test("mutating a summary's per-source counts does not affect later summaries", () => {
+  const feedback = createRecommendationFeedback();
+  feedback.recordRecommendation("tool", ["deploy-kit"], ["deploy-kit"]);
+
+  const summary = feedback.summarize();
+  for (const counts of Object.values(summary.bySource)) {
+    counts.offers = 99;
+  }
+
+  const later = feedback.summarize();
+  assert.deepEqual(later.bySource, {
+    "auto-inject": { offers: 0, candidateSlots: 0, loaded: 0, zeroHits: 0 },
+    command: { offers: 0, candidateSlots: 0, loaded: 0, zeroHits: 0 },
+    tool: { offers: 1, candidateSlots: 1, loaded: 1, zeroHits: 0 },
+  });
+  assert.equal(later.totalOffers, 1);
+});
+
 test("recordRecommendation marks review-only command flows as abandoned", () => {
   const feedback = createRecommendationFeedback();
 

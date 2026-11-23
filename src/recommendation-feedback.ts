@@ -136,7 +136,11 @@ export function createRecommendationFeedback(): RecommendationFeedback {
         totalAbandoned,
         zeroCandidateQueries,
         followThroughRate,
-        bySource,
+        bySource: {
+          "auto-inject": { ...bySource["auto-inject"] },
+          command: { ...bySource.command },
+          tool: { ...bySource.tool },
+        },
         topSkills,
         retention: {
           maxSkillEntries: MAX_SKILL_ENTRIES,
