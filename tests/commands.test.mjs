@@ -44,6 +44,53 @@ test("shiori:reload can reload runtime from UI selection", async () => {
   }
 });
 
+test("inventory auto-refresh opt-out keeps new skills hidden until shiori:reload", async () => {
+  const cwd = await makeSkillProject();
+  const { commands, events } = registerExtension();
+  const { HOME, USERPROFILE } = process.env;
+  try {
+    // Keep discovery out of the user's global skill root on Unix and Windows.
+    const home = join(cwd, "home");
+    await mkdir(home);
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+    await writeFile(join(cwd, ".pi", "skill-shiori.yml"), "inventory:\n  autoRefreshOnChange: false\n", "utf8");
+
+    const ctx = makeCommandContext(cwd, { selects: [RELOAD_INVENTORY_ONLY] });
+    const doctor = commands.get("shiori:doctor").handler;
+    await events.get("session_start")({}, ctx);
+
+    await doctor("", ctx);
+    assert.match(ctx.notifications.at(-1).message, /^autoRefreshOnChange: disabled$/m);
+    assert.match(ctx.notifications.at(-1).message, /^skills: 1$/m);
+
+    const addedSkill = join(cwd, ".pi", "skills", "release-helper");
+    await mkdir(addedSkill);
+    await writeFile(
+      join(addedSkill, "SKILL.md"),
+      "---\nname: release-helper\ndescription: Helps prepare release notes\n---\n# Release Helper\n",
+      "utf8",
+    );
+
+    await doctor("", ctx);
+    assert.match(ctx.notifications.at(-1).message, /^skills: 1$/m, "inventory stays unchanged before reload");
+
+    await commands.get("shiori:reload").handler("", ctx);
+    assert.match(ctx.notifications.at(-1).message, /^Pi Skill Shiori reloaded: 2 skills \([^)]+\)$/);
+    assert.equal(ctx.reloadCount, 0, "inventory-only reload must not reload the Pi runtime");
+
+    await doctor("", ctx);
+    assert.match(ctx.notifications.at(-1).message, /^autoRefreshOnChange: disabled$/m);
+    assert.match(ctx.notifications.at(-1).message, /^skills: 2$/m, "reload makes the new skill visible in this session");
+  } finally {
+    for (const [key, value] of Object.entries({ HOME, USERPROFILE })) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    await cleanup(cwd, events);
+  }
+});
+
 test("shiori:doctor reports the effective policy source", async () => {
   const cwd = await makeSkillProject();
   const { commands, events } = registerExtension();
