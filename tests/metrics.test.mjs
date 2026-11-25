@@ -68,3 +68,19 @@ test("formatTimingSummary uses finite zero values before any timing is recorded"
   assert.match(summary, /retrieval: count=0 last=0\.00ms total=0\.00ms max=0\.00ms/);
   assert.doesNotMatch(summary, /NaN|Infinity/);
 });
+
+test("formatTimingSummary displays separate populated timing counters", () => {
+  const { timing } = createStats();
+
+  recordTiming(timing.inventoryRefresh, 12.5);
+  recordTiming(timing.inventoryRefresh, 3.25);
+  recordTiming(timing.retrieval, 8.75);
+  recordTiming(timing.retrieval, 2);
+  recordTiming(timing.retrieval, 4.125);
+
+  assert.equal(
+    formatTimingSummary(timing),
+    "Timing (session-local) | inventory refresh: count=2 last=3.25ms total=15.75ms max=12.50ms | " +
+      "retrieval: count=3 last=4.13ms total=14.88ms max=8.75ms",
+  );
+});
