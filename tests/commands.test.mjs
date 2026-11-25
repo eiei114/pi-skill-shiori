@@ -159,6 +159,29 @@ test("shiori:doctor and shiori:stats report clamped policy values", async () => 
   }
 });
 
+test("shiori:doctor and shiori:stats report a malformed auto-refresh opt-out", async () => {
+  const cwd = await makeSkillProject();
+  const { commands, events } = registerExtension();
+  try {
+    await writeFile(join(cwd, ".pi", "skill-shiori.yml"), 'inventory:\n  autoRefreshOnChange: "false"\n', "utf8");
+    const ctx = makeCommandContext(cwd);
+    const warning = 'inventory.autoRefreshOnChange: expected a YAML boolean, got "false"; auto-refresh remains enabled by default';
+
+    await commands.get("shiori:doctor").handler("", ctx);
+    const doctor = ctx.notifications.at(-1);
+    assert.equal(doctor.level, "warning");
+    assert.match(doctor.message, /^autoRefreshOnChange: enabled$/m);
+    assert.match(doctor.message, /^policyWarnings: 1$/m);
+    assert.ok(doctor.message.includes(`  - ${warning}`));
+
+    await commands.get("shiori:stats").handler("", ctx);
+    const stats = ctx.notifications.at(-1);
+    assert.deepEqual(readStatsPayload(stats.message).policyWarnings, [warning]);
+  } finally {
+    await cleanup(cwd, events);
+  }
+});
+
 test("shiori:doctor reloads when policy source changes mid-session", async () => {
   const cwd = await makeSkillProject({ withPolicy: false });
   const home = await mkdtemp(join(tmpdir(), "shiori-home-test-"));

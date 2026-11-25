@@ -447,6 +447,41 @@ test("a wrongly shaped alwaysVisible list falls back to the default allowlist an
   }
 });
 
+for (const { name, yaml, normalized, warnings } of [
+  {
+    name: "quoted false",
+    yaml: 'inventory:\n  autoRefreshOnChange: "false"\n',
+    normalized: undefined,
+    warnings: ['inventory.autoRefreshOnChange: expected a YAML boolean, got "false"; auto-refresh remains enabled by default'],
+  },
+  {
+    name: "literal false",
+    yaml: "inventory:\n  autoRefreshOnChange: false\n",
+    normalized: false,
+    warnings: undefined,
+  },
+  {
+    name: "omitted setting",
+    yaml: "inventory: {}\n",
+    normalized: undefined,
+    warnings: undefined,
+  },
+]) {
+  test(`inventory.autoRefreshOnChange policy handles ${name}`, async () => {
+    const { cwd, globalPolicyPath } = await makePolicyFixture();
+    try {
+      await writeProjectPolicy(cwd, yaml);
+
+      const loaded = await loadPolicyWithSource(cwd, { globalPolicyPath });
+
+      assert.equal(loaded.policy.inventory?.autoRefreshOnChange, normalized);
+      assert.deepEqual(loaded.warnings, warnings);
+    } finally {
+      await cleanup(cwd);
+    }
+  });
+}
+
 test("a wrongly shaped inventory.roots list is ignored and warns", async () => {
   const cases = [
     ['inventory:\n  roots: "./extra"\n', "a string"],

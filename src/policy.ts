@@ -125,6 +125,12 @@ function normalizePolicy(document: unknown): NormalizedPolicy {
   const inventorySection = readPolicySection(root, "inventory", warnings);
 
   const extraRoots = readInventoryRoots(inventorySection, warnings);
+  const autoRefreshOnChange = inventorySection.autoRefreshOnChange;
+  if (Object.hasOwn(inventorySection, "autoRefreshOnChange") && typeof autoRefreshOnChange !== "boolean") {
+    warnings.push(
+      `inventory.autoRefreshOnChange: expected a YAML boolean, got ${describeValue(autoRefreshOnChange)}; auto-refresh remains enabled by default`,
+    );
+  }
 
   return {
     policy: {
@@ -142,13 +148,10 @@ function normalizePolicy(document: unknown): NormalizedPolicy {
       },
       alwaysVisible: normalizeAlwaysVisible(readAlwaysVisible(root, warnings)).allowlist,
       inventory:
-        extraRoots.length > 0 || inventorySection.autoRefreshOnChange === false
+        extraRoots.length > 0 || autoRefreshOnChange === false
           ? {
               roots: extraRoots.length > 0 ? extraRoots : undefined,
-              autoRefreshOnChange:
-                typeof inventorySection.autoRefreshOnChange === "boolean"
-                  ? inventorySection.autoRefreshOnChange
-                  : undefined,
+              autoRefreshOnChange: typeof autoRefreshOnChange === "boolean" ? autoRefreshOnChange : undefined,
             }
           : undefined,
       skills: readSkills(root, warnings),
